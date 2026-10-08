@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#07050d">
-<title>O céu daquela noite</title>
+<title>O céu do nosso primeiro beijo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500;1,600&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
@@ -167,6 +167,52 @@
   .botao:hover{ border-color:var(--gold); color:var(--gold); background:rgba(255,159,197,0.12); }
   #final:not(.vis) .botao{ pointer-events:none; }
 
+  /* no final, o aviso de que tem vídeos lá embaixo */
+  #final .mais{ margin-top:2.4rem; display:flex; flex-direction:column; align-items:center; gap:0.8rem; }
+  #final .mais span{ font-size:0.68rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--cream-dim); text-shadow:0 1px 12px rgba(0,0,0,0.9); }
+  #final .mais .linha{ width:1px; height:38px; background:linear-gradient(to bottom, var(--gold), transparent); animation:desce 2.2s ease-in-out infinite; }
+
+  /* ---------- os vídeos, depois do final ---------- */
+  #videos{
+    position:relative; z-index:8; pointer-events:none;
+    display:flex; flex-direction:column; align-items:center; text-align:center;
+    padding:55vh 7vw max(14vh, calc(env(safe-area-inset-bottom) + 60px));
+  }
+  #videos .intro{
+    font-family:'Cormorant Garamond', Georgia, serif; font-style:italic;
+    font-size:clamp(1.35rem, 4.6vw, 2.1rem); line-height:1.45; max-width:24ch; margin:0 0 16vh;
+    color:var(--cream); text-shadow:0 2px 24px rgba(0,0,0,0.95), 0 0 40px rgba(255,159,197,0.25);
+  }
+  #listaVideos{ display:flex; flex-direction:column; align-items:center; gap:16vh; width:100%; }
+  #videos .cartao{
+    pointer-events:auto; position:relative; margin:0; cursor:pointer;
+    padding:12px 12px 0; border-radius:2px;
+    background:linear-gradient(#fcf1f5, #eedbe6);
+    box-shadow:0 24px 60px rgba(0,0,0,0.65), 0 0 46px rgba(255,170,210,0.32);
+    opacity:0; transform:rotate(var(--giro, 0deg)) translateY(28px);
+    transition:opacity 1.1s ease, transform 1.1s ease;
+  }
+  #videos .cartao.on{ opacity:1; transform:rotate(var(--giro, 0deg)); }
+  #videos .cartao.deitado{ width:min(86vw, 540px); }
+  #videos .cartao.em-pe{ width:min(64vw, 300px); }
+  #videos video{ display:block; width:100%; height:auto; object-fit:cover; background:#1d1222; }
+  #videos figcaption{
+    font-family:'Cormorant Garamond', Georgia, serif; font-style:italic;
+    font-size:clamp(0.98rem, 3.6vw, 1.15rem); line-height:1.35; color:#6e4264;
+    padding:0.9em 0.6em 1.1em;
+  }
+  #videos .som{
+    position:absolute; top:22px; right:22px; pointer-events:none;
+    font-size:0.6rem; letter-spacing:0.18em; text-transform:uppercase; color:#fff;
+    background:rgba(20,8,24,0.55); -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+    padding:0.55em 0.9em; border-radius:999px;
+    transition:opacity 0.5s ease;
+  }
+  #videos .cartao.com-som .som{ opacity:0; }
+  #videos .botoes{ margin-top:16vh; }
+  body.modo-livre #videos{ display:none; }
+  body.modo-simples #olharCeu{ display:none; }
+
   /* progresso */
   #progresso{
     position:fixed; top:max(20px, env(safe-area-inset-top)); right:max(20px, env(safe-area-inset-right)); z-index:7;
@@ -288,10 +334,7 @@
   <p class="pre"></p>
   <h1></h1>
   <p class="sub"></p>
-  <div class="botoes">
-    <button class="botao" id="olharCeu">olhar o céu</button>
-    <button class="botao" id="verDeNovo">ver de novo</button>
-  </div>
+  <div class="mais" id="maisVideos"><span></span><div class="linha"></div></div>
 </div>
 
 <div id="livre">
@@ -309,6 +352,16 @@
 
 <div id="simples"></div>
 
+<!-- os vídeos, no fim de tudo: os cartões saem do VIDEOS, no começo do <script> -->
+<section id="videos">
+  <p class="intro"></p>
+  <div id="listaVideos"></div>
+  <div class="botoes">
+    <button class="botao" id="olharCeu">olhar o céu</button>
+    <button class="botao" id="verDeNovo">ver de novo</button>
+  </div>
+</section>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <script src="astro.js"></script>
@@ -323,12 +376,12 @@
    (a data, o lugar, as iniciais, as fotos e os textos)
    ============================================================ */
 
-/* a noite do primeiro beijo do Romario e da Julia: o céu, a lua, os planetas e a terra
-   se recalculam sozinhos. a hora certa ninguém sabe, então ficou 21h (a lua cheia
-   nascendo); se descobrirem, é só trocar */
+/* o primeiro beijo do Romario e da Julia: o céu, a lua, os planetas e a terra se
+   recalculam sozinhos. foi por volta das 18h, com o sol se pondo (ele se pôs às 18h28),
+   então o site começa num pôr do sol e só depois mostra as estrelas que estavam lá */
 var NOITE = {
   dia: 8, mes: 10, ano: 2025,
-  hora: '21:00',
+  hora: '18:00',
   fuso: '-03:00',
   lugar: 'Esteio',
   lat: -29.861, lon: -51.179
@@ -363,8 +416,8 @@ var TEXTOS = {
   abertura:     'o dia do nosso primeiro beijo',
   comecou:      'foi nesse dia, em {lugar},\nque tudo começou.',
   beijo:        'ainda lembro do nosso primeiro beijo\ne de como aquele momento mudou tudo.',
-  luzes:        'naquela noite, as luzes da cidade\nescondiam quase tudo.',
-  apagar:       'mas se elas se apagassem\npor um instante...',
+  luzes:        'era fim de tarde, e o sol se pondo\nainda escondia todas as estrelas.',
+  apagar:       'mas se ele se apagasse\npor um instante...',
   ceuVerdade:   'esse era o céu de verdade\nem cima da gente.',
   estrelasViram:'e essas foram as estrelas\nque viram o nosso primeiro beijo.',
   subir:        'e agora eu te levo\npra ver as nossas estrelas.',
@@ -374,16 +427,28 @@ var TEXTOS = {
   estrela:      'e cada momento com você\nvirou uma estrela.',
   constelacao:  'a nossa constelação em {data}',
   bilhete:      'Meu desejo é continuar descobrindo cada pedacinho da pessoa incrível que você é. E, se a vida permitir, transformar todos esses pequenos momentos em uma história inteira. Uma história que comece com nosso primeiro beijo e tenha muitos capítulos depois dele. Até chegar o dia em que possamos olhar para trás e lembrar de tudo o que construímos juntos.',
-  finalAntes:   'mas de todas as estrelas daquela noite,',
+  finalAntes:   'mas de todas as estrelas daquele céu,',
   finalGrande:  'a mais bonita sempre\nserá você.',
   finalDepois:  'porque eu quero viver muitos jardins, músicas, sonhos e capítulos da nossa história ao seu lado.',
-  // só na versão simples (aparelhos sem 3D), no lugar da parte das luzes se apagando
+  maisVideos:   'role pra ver os nossos vídeos',
+  videosIntro:  'eu não amo apenas os momentos perfeitos,\nmas também todos aqueles que vivemos juntos.',
+  // só na versão simples (aparelhos sem 3D), no lugar da parte do sol se apagando
   simples: [
     'ainda lembro do nosso primeiro beijo e de como aquele momento mudou tudo.',
-    'naquela noite, as luzes da cidade escondiam quase tudo.',
+    'era fim de tarde, e o sol se pondo ainda escondia todas as estrelas.',
     'então eu fui atrás das estrelas que viram o nosso primeiro beijo, cada uma exatamente onde estava.'
   ]
 };
+
+/* os vídeos do final, na ordem em que aparecem (arquivos na pasta videos/).
+   formato: '16/9' deitado, '9/16' em pé. as legendas são frases do Romario */
+var VIDEOS = [
+  { arquivo:'videos/video1.mp4', formato:'16/9', legenda:'amo as nossas histórias, nossas brincadeiras, nossas conversas e tudo aquilo que ainda vamos viver' },
+  { arquivo:'videos/video3.mp4', formato:'16/9', legenda:'porque quando penso no futuro, é impossível não imaginar você fazendo parte dele' },
+  { arquivo:'videos/video2.mp4', formato:'16/9', legenda:'e talvez seja isso que torna o que sinto por você tão verdadeiro' },
+  { arquivo:'videos/video4.mp4', formato:'9/16', legenda:'porque até as melodias mais bonitas ficam melhores quando penso em nós dois' },
+  { arquivo:'videos/video5.mp4', formato:'9/16', legenda:'e quem sabe um dia transformar o nosso namoro em uma vida inteira compartilhada' }
+];
 
 var MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
 function dois(n){ return (n < 10 ? '0' : '') + n; }
@@ -406,6 +471,98 @@ escreverComQuebras(document.querySelector('#bilhete .texto'), texto('bilhete'));
 escreverComQuebras(document.querySelector('#final .pre'), texto('finalAntes'));
 escreverComQuebras(document.querySelector('#final h1'), texto('finalGrande'));
 escreverComQuebras(document.querySelector('#final .sub'), texto('finalDepois'));
+
+/* ============================================================
+   os vídeos do final
+   tocam mudos quando aparecem na tela (o iPhone só deixa assim);
+   um toque liga o som daquele vídeo
+   ============================================================ */
+function montarVideos(){
+  var secao = document.getElementById('videos');
+  if (!VIDEOS.length) {
+    document.getElementById('maisVideos').style.display = 'none';
+    secao.querySelector('.intro').style.display = 'none';
+    return;
+  }
+  escreverComQuebras(secao.querySelector('.intro'), texto('videosIntro'));
+  document.querySelector('#maisVideos span').textContent = texto('maisVideos');
+
+  var lista = document.getElementById('listaVideos');
+  var cartoes = [];
+  VIDEOS.forEach(function(v, i){
+    var cartao = document.createElement('figure');
+    cartao.className = 'cartao ' + (v.formato === '9/16' ? 'em-pe' : 'deitado');
+    cartao.style.setProperty('--giro', ((i % 2 ? 1 : -1) * (1.2 + (i % 3) * 0.7)).toFixed(1) + 'deg');
+    cartao.dataset.i = i;
+
+    var video = document.createElement('video');
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.setAttribute('muted', '');
+    video.setAttribute('playsinline', '');
+    video.setAttribute('webkit-playsinline', '');
+    video.preload = 'none';
+    video.style.aspectRatio = v.formato;
+    video.dataset.src = v.arquivo + '#t=0.001';   // o "#t" faz o Safari mostrar o primeiro quadro
+
+    var som = document.createElement('span');
+    som.className = 'som';
+    som.textContent = '♪ toque pra ouvir';
+    var legenda = document.createElement('figcaption');
+    legenda.textContent = v.legenda;
+
+    cartao.appendChild(video);
+    cartao.appendChild(som);
+    cartao.appendChild(legenda);
+    lista.appendChild(cartao);
+    cartoes.push({ el: cartao, video: video });
+
+    cartao.addEventListener('click', function(){
+      if (video.muted) {
+        cartoes.forEach(function(c){ if (c.video !== video) { c.video.muted = true; c.el.classList.remove('com-som'); } });
+        video.muted = false;
+        video.currentTime = 0;
+        cartao.classList.add('com-som');
+      } else {
+        video.muted = true;
+        cartao.classList.remove('com-som');
+      }
+      tocar(video);
+    });
+  });
+
+  function tocar(video){ var p = video.play(); if (p && p.catch) p.catch(function(){}); }
+  function carregar(c){
+    if (c.video.getAttribute('src')) return;
+    c.video.preload = 'metadata';
+    c.video.src = c.video.dataset.src;
+  }
+
+  if (!('IntersectionObserver' in window)) {
+    cartoes.forEach(function(c){ carregar(c); c.el.classList.add('on'); });
+    return;
+  }
+  // perto da tela começa a baixar; na tela aparece e toca; saindo pausa e tira o som
+  var perto = new IntersectionObserver(function(ents){
+    ents.forEach(function(e){ if (e.isIntersecting) carregar(cartoes[+e.target.dataset.i]); });
+  }, { rootMargin: '120% 0px' });
+  var naTela = new IntersectionObserver(function(ents){
+    ents.forEach(function(e){
+      var c = cartoes[+e.target.dataset.i];
+      if (e.isIntersecting) {
+        carregar(c);
+        c.el.classList.add('on');
+        tocar(c.video);
+      } else {
+        c.video.pause();
+        if (!c.video.muted) { c.video.muted = true; c.el.classList.remove('com-som'); }
+      }
+    });
+  }, { threshold: 0.45 });
+  cartoes.forEach(function(c){ perto.observe(c.el); naTela.observe(c.el); });
+}
+montarVideos();
 
 /* ============================================================
    utilidades
@@ -450,6 +607,7 @@ var MODO_TESTE = /[?&]teste=1/.test(window.location.search);
    ============================================================ */
 
 var ceu, cruz, destaque, nucleo;
+var FASE_DIA = 0;   // 1 = o sol ainda no céu (o site começa num pôr do sol), 0 = noite fechada
 
 function altAzDoVetor(v){
   var n = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
@@ -462,6 +620,7 @@ function separacao(a, b){
 
 function calcularCeu(){
   ceu = ASTRO.montarCeu({ data: DATA_NOITE, lat: NOITE.lat, lon: NOITE.lon });
+  FASE_DIA = clamp((ceu.sol.alt + 12) / 12, 0, 1);
 
   // centro do cruzeiro: média das quatro estrelas principais
   var soma = [0, 0, 0];
@@ -487,7 +646,7 @@ function textoCruz(){
   if (Math.abs(difAz(cruz.az, 180)) < 8) onde = 'em pé, exatamente no sul.';
   else if (cruz.az < 180) onde = 'subindo pelo sudeste.';
   else onde = 'deitando pro sudoeste.';
-  return 'o Cruzeiro do Sul estava lá no alto,\n' + onde;
+  return 'o Cruzeiro do Sul ' + (cruz.alt > 35 ? 'estava lá no alto' : 'já estava lá') + ',\n' + onde;
 }
 
 function escolherDestaque(){
@@ -513,7 +672,7 @@ function escolherDestaque(){
   if (ant.alt > 8) {
     return {
       az: ant.az, olhaAlt: ant.alt,
-      texto: 'e o Escorpião ' + (ant.az < 180 ? 'subindo' : 'se pondo') + ',\ncom Antares, o coração dele,\nbem vermelhinha.',
+      texto: 'e o Escorpião ' + (ant.alt > 45 ? 'lá no alto' : (ant.az < 180 ? 'subindo' : 'se pondo')) + ',\ncom Antares, o coração dele,\nbem vermelhinha.',
       rotulos: [{ txt:'Antares', alt: ant.alt - 2.4, az: ant.az }],
       linhas: 'Sco'
     };
@@ -1058,7 +1217,7 @@ function prepararVetores(){
 
   // lá longe no espaço, a gente voa em direção ao centro da via láctea
   // (um pouco abaixo dele, pra ele ficar no alto da tela, atrás das fotos)
-  ALT_VOO = clamp(nucleo.alt - 17, 5, 40);
+  ALT_VOO = clamp(nucleo.alt - 17, 5, 60);
   G = vetor3(ALT_VOO, nucleo.az, 1).normalize();
   GRT = new THREE.Vector3().crossVectors(G, _CIMA).normalize();
   GUP = new THREE.Vector3().crossVectors(GRT, G).normalize();
@@ -1114,11 +1273,14 @@ function construirTrajeto(){
   var alto = function(y){ return new THREE.Vector3(0, y, 0); };
 
   /* --- no chão, olhando o horizonte da cidade --- */
-  W.push(noChao(A(0.000),  9, 168, 60));
-  W.push(noChao(A(0.036), 11, 170, 60));
-  W.push(noChao(A(0.076), 18, 173, 60));
-  W.push(noChao(A(0.112), 26, 176, 61));
-  W.push(noChao(A(0.150), 33, 178, 62));
+  /* (com o sol ainda no céu, começa olhando pro pôr do sol e depois vira pro sul) */
+  var tarde = FASE_DIA > 0.3;
+  var azIni = tarde ? ceu.sol.az - 6 : 168;
+  W.push(noChao(A(0.000), tarde ? 16 : 9,  azIni, 60));
+  W.push(noChao(A(0.036), tarde ? 17 : 11, lerp(azIni, 178, 0.03), 60));
+  W.push(noChao(A(0.076), tarde ? 20 : 18, lerp(azIni, 178, 0.12), 60));
+  W.push(noChao(A(0.112), 26, lerp(azIni, 178, 0.45), 61));
+  W.push(noChao(A(0.150), 33, lerp(azIni, 178, 0.85), 62));
 
   /* --- as luzes se apagam e o céu aparece --- */
   W.push(noChao(A(0.182), 41, 180, 66));
@@ -1412,6 +1574,8 @@ var vsDomo = [
 var fsDomo = [
   'uniform float uPoluicao;',
   'uniform float uEspaco;',
+  'uniform float uDia;',
+  'uniform vec3 uSol;',
   'varying vec3 vDir;',
   'void main(){',
   '  vec3 d = normalize(vDir);',
@@ -1427,6 +1591,16 @@ var fsDomo = [
   '  vec3 limpo = vec3(0.12, 0.055, 0.11);',
   '  cor += mix(limpo, cidade, uPoluicao) * brilho;',
   '  cor += vec3(0.05, 0.022, 0.04) * uPoluicao * (1.0 - smoothstep(0.0, 0.9, h));',
+  // o pôr do sol: rosado embaixo, lilás em cima, dourado pro lado do sol, e o próprio sol
+  '  if (uDia > 0.001) {',
+  '    float s = max(dot(d, uSol), 0.0);',
+  '    vec3 tarde = mix(vec3(0.66, 0.34, 0.42), vec3(0.15, 0.14, 0.34), smoothstep(-0.02, 0.6, h));',
+  '    tarde += vec3(1.0, 0.50, 0.30) * pow(s, 5.0) * 0.55 * (1.0 - smoothstep(0.0, 0.45, h));',
+  '    tarde += vec3(1.0, 0.70, 0.48) * pow(s, 60.0) * 0.7;',
+  '    tarde += vec3(1.0, 0.86, 0.66) * pow(s, 900.0) * 0.8;',
+  '    tarde = mix(tarde, vec3(1.0, 0.93, 0.80), smoothstep(0.99988, 0.99994, s));',
+  '    cor = mix(cor, tarde, uDia);',
+  '  }',
   '  vec3 espaco = vec3(0.004, 0.003, 0.010);',
   '  cor = mix(cor, espaco, uEspaco);',
   '  gl_FragColor = vec4(cor, 1.0);',
@@ -1793,7 +1967,7 @@ function criarDomo(){
   domo = new THREE.Mesh(
     new THREE.SphereGeometry(rc(980), 48, 32),
     new THREE.ShaderMaterial({
-      uniforms: { uPoluicao: { value: 1 }, uEspaco: { value: 0 } },
+      uniforms: { uPoluicao: { value: 1 }, uEspaco: { value: 0 }, uDia: { value: FASE_DIA }, uSol: { value: vetor3(ceu.sol.alt, ceu.sol.az, 1) } },
       vertexShader: vsDomo, fragmentShader: fsDomo,
       side: THREE.BackSide, depthWrite: false
     })
@@ -2816,7 +2990,10 @@ function atualizarCeu(t, tempo, dt){
     u.uCintila.value = movimentoReduzido ? 0 : 0.24 * (1 - espaco);
     u.uAtmosfera.value = 1 - espaco;
   });
-  estrelasReais.material.uniforms.uOpacity.value = 1 + espaco * 0.15;
+  // se ainda era dia, o sol "se apaga" junto com as luzes da cidade e só aí as estrelas aparecem
+  var dia = modoLivre ? 0 : FASE_DIA * (1 - suave(faixa(t, A(0.150), A(0.200))));
+  domo.material.uniforms.uDia.value = dia;
+  estrelasReais.material.uniforms.uOpacity.value = (1 + espaco * 0.15) * (1 - dia);
   poeiraVL.material.uniforms.uOpacity.value = vl * (0.85 + espaco * 0.15);
   viaLactea.material.uniforms.uOpacity.value = vl * lerp(1.45, 1.25, espaco);
   nuvensMagalhaes.forEach(function(n){ n.material.opacity = vl * 0.45; });
@@ -3019,13 +3196,19 @@ var elProgCheio = document.querySelector('#progresso .cheio');
 function atualizarInterface(t){
   elDica.classList.toggle('vis', t < A(0.018));
   elBilhete.classList.toggle('vis', t > 0.898 && t < 0.935);
-  elFinal.classList.toggle('vis', t > 0.978);
+  // o final some quando a pessoa continua rolando pros vídeos
+  var nosVideos = window.scrollY - maxTrilho() > window.innerHeight * 0.3;
+  elFinal.classList.toggle('vis', t > 0.978 && !nosVideos);
   elProg.classList.toggle('vis', t > 0.015 && t < 0.97);
   elProgCheio.style.transform = 'scaleY(' + t.toFixed(4) + ')';
 }
 
+/* a viagem é só o trilho; os vídeos vêm depois dele e não mexem no progresso */
+function maxTrilho(){
+  return Math.max(0, document.getElementById('trilho').offsetHeight - window.innerHeight);
+}
 function progressoDoScroll(){
-  var max = document.documentElement.scrollHeight - window.innerHeight;
+  var max = maxTrilho();
   return max > 0 ? clamp(window.scrollY / max, 0, 1) : 0;
 }
 
@@ -3214,7 +3397,7 @@ Promise.all([carregarFontes(), carregarImagens(), comLimite(promessaTerra, 9000)
     return;
   }
   if (tInicial !== null) {
-    var max = document.documentElement.scrollHeight - window.innerHeight;
+    var max = maxTrilho();
     if (!MODO_TESTE) window.scrollTo(0, tInicial * max);
     atualT = alvoT = tInicial;
   }
@@ -3222,7 +3405,7 @@ Promise.all([carregarFontes(), carregarImagens(), comLimite(promessaTerra, 9000)
   window.__ceu = {
     camera: camera, get t(){ return atualT; },
     ir: function(t, quadros){
-      var max = document.documentElement.scrollHeight - window.innerHeight;
+      var max = maxTrilho();
       if (!MODO_TESTE) window.scrollTo(0, t * max);
       else tFixo = t;
       atualT = alvoT = t;
