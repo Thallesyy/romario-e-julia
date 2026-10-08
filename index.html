@@ -1,0 +1,3252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07050d">
+<title>O céu daquela noite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500;1,600&family=Jost:wght@200;300;400&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#07050d;
+    --cream:#fdeef4;
+    --cream-dim:#cdb9d4;
+    --gold:#ff9fc5;
+    --rose:#ea6f9b;
+    --lilas:#c9a3e8;
+    color-scheme: dark;
+  }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; padding:0; background:var(--bg); }
+  body{
+    color:var(--cream);
+    font-family:'Jost', system-ui, sans-serif;
+    font-weight:300;
+    overflow-x:hidden;
+    overscroll-behavior-y:none;
+  }
+  .serif{ font-family:'Cormorant Garamond', Georgia, serif; }
+
+  /* ---------- palco 3d ---------- */
+  /* altura fixa (100vh no iPhone é a tela inteira): a barra do Safari aparecendo e sumindo não redimensiona o 3D */
+  #cena{
+    position:fixed; top:0; left:0;
+    width:100%; height:100vh;
+    display:block;
+    z-index:1;
+  }
+  #trilho{ position:relative; z-index:2; pointer-events:none; }
+
+  .vinheta{
+    position:fixed; inset:0; z-index:3; pointer-events:none;
+    background:radial-gradient(ellipse 80% 70% at 50% 50%, transparent 45%, rgba(6,3,10,0.30) 75%, rgba(4,2,8,0.70) 100%);
+  }
+  .grao{
+    position:fixed; inset:-50%; z-index:4; pointer-events:none;
+    opacity:0.045;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+    animation: tremor 0.9s steps(3) infinite;
+  }
+  @media (prefers-reduced-motion: reduce){ .grao{ animation:none; } }
+  @keyframes tremor{
+    0%{ transform:translate(0,0) }
+    33%{ transform:translate(-1.5%, 1%) }
+    66%{ transform:translate(1%, -1.5%) }
+    100%{ transform:translate(0,0) }
+  }
+
+  /* ---------- camadas de interface ---------- */
+  .camada{
+    position:fixed; inset:0; z-index:6;
+    display:flex; flex-direction:column;
+    align-items:center; justify-content:center;
+    text-align:center;
+    padding:8vh 7vw;
+    pointer-events:none;
+    opacity:0;
+    transition:opacity 0.9s ease;
+  }
+  .camada.vis{ opacity:1; }
+
+  /* carregamento */
+  #carregando{
+    z-index:20;
+    background:var(--bg);
+    opacity:1;
+    gap:1.6rem;
+  }
+  #carregando.saiu{ opacity:0; pointer-events:none; }
+  .pulso{
+    width:22px; height:22px;
+    background:var(--gold);
+    clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+    animation:bate 1.6s ease-in-out infinite;
+  }
+  @keyframes bate{ 0%,100%{ transform:scale(1); opacity:0.8 } 50%{ transform:scale(1.2); opacity:1 } }
+  #carregando p{
+    font-size:0.72rem; letter-spacing:0.34em; text-transform:uppercase;
+    color:var(--cream-dim); margin:0;
+  }
+
+  /* dica inicial */
+  #dica{ justify-content:flex-end; padding-bottom:max(7vh, calc(env(safe-area-inset-bottom) + 24px)); }
+  #dica .linha{
+    width:1px; height:42px; margin:0 auto 1rem;
+    background:linear-gradient(to bottom, transparent, var(--gold));
+    animation:desce 2.2s ease-in-out infinite;
+  }
+  @keyframes desce{ 0%,100%{ transform:scaleY(0.55); opacity:0.4 } 50%{ transform:scaleY(1); opacity:1 } }
+  #dica span{
+    font-size:0.72rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--cream-dim);
+  }
+
+  /* bilhete */
+  #bilhete::before{
+    content:""; position:absolute; inset:0; z-index:-1;
+    background:radial-gradient(ellipse 70% 55% at 50% 50%, rgba(7,4,12,0.72), rgba(7,4,12,0.35) 60%, transparent 85%);
+  }
+  #bilhete .texto{
+    font-family:'Cormorant Garamond', Georgia, serif;
+    font-size:clamp(1.08rem, 2.4vw, 1.45rem);
+    line-height:1.95;
+    max-width:44ch;
+    color:var(--cream);
+    text-shadow:0 2px 28px rgba(0,0,0,0.95), 0 0 60px rgba(0,0,0,0.8);
+    margin:0;
+  }
+  #bilhete .selo{
+    font-size:0.68rem; letter-spacing:0.34em; text-transform:uppercase;
+    color:var(--gold); margin-bottom:1.8rem; opacity:0.9;
+  }
+
+  /* final */
+  #final{ justify-content:flex-end; padding-bottom:max(7vh, calc(env(safe-area-inset-bottom) + 30px)); gap:0; }
+  /* o centro da via láctea pode ficar bem atrás das frases: uma sombra suave pra ler */
+  #final::before{
+    content:""; position:absolute; inset:0; z-index:-1;
+    background:radial-gradient(ellipse 90% 55% at 50% 72%, rgba(7,4,12,0.62), rgba(7,4,12,0.30) 55%, transparent 82%);
+  }
+  #final .pre{
+    font-family:'Cormorant Garamond', Georgia, serif; font-style:italic;
+    font-size:clamp(1.05rem, 2.8vw, 1.35rem);
+    color:var(--cream-dim); margin:0 0 0.5rem;
+    text-shadow:0 2px 20px rgba(0,0,0,0.9);
+  }
+  #final h1{
+    font-family:'Cormorant Garamond', Georgia, serif;
+    font-style:italic; font-weight:500;
+    font-size:clamp(2.6rem, 10.5vw, 6rem);
+    line-height:1.02;
+    margin:0;
+    color:#fff2f7;
+    text-shadow:0 0 40px rgba(255,159,197,0.35), 0 4px 30px rgba(0,0,0,0.8);
+  }
+  #final .sub{
+    margin-top:1.1rem;
+    font-size:clamp(0.86rem, 2.3vw, 1rem);
+    letter-spacing:0.05em;
+    color:var(--cream-dim);
+    text-shadow:0 2px 20px rgba(0,0,0,0.9);
+  }
+  .botoes{ display:flex; gap:0.8rem; margin-top:2.2rem; flex-wrap:wrap; justify-content:center; }
+  .botao{
+    pointer-events:auto;
+    background:rgba(24,12,30,0.4);
+    -webkit-backdrop-filter:blur(6px);
+    backdrop-filter:blur(6px);
+    border:1px solid rgba(253,238,244,0.34);
+    color:var(--cream);
+    font-family:'Jost', sans-serif; font-weight:300;
+    font-size:0.74rem; letter-spacing:0.22em; text-transform:uppercase;
+    padding:1em 1.9em; border-radius:999px;
+    cursor:pointer;
+    transition:border-color 0.4s ease, color 0.4s ease, background 0.4s ease;
+  }
+  .botao:hover{ border-color:var(--gold); color:var(--gold); background:rgba(255,159,197,0.12); }
+  #final:not(.vis) .botao{ pointer-events:none; }
+
+  /* progresso */
+  #progresso{
+    position:fixed; top:max(20px, env(safe-area-inset-top)); right:max(20px, env(safe-area-inset-right)); z-index:7;
+    width:22px; height:22px; pointer-events:none;
+    opacity:0; transition:opacity 1s ease;
+  }
+  #progresso.vis{ opacity:0.9; }
+  #progresso .casca, #progresso .cheio{
+    position:absolute; inset:0;
+    clip-path:polygon(50% 0%, 61% 35%, 98% 35%, 68% 57%, 79% 91%, 50% 70%, 21% 91%, 32% 57%, 2% 35%, 39% 35%);
+  }
+  #progresso .casca{ background:rgba(253,238,244,0.22); }
+  #progresso .cheio{
+    background:linear-gradient(to top, var(--rose), var(--gold));
+    transform-origin:bottom center;
+    transform:scaleY(0);
+  }
+
+  /* ---------- olhar o céu livremente ---------- */
+  #livre{
+    position:fixed; inset:0; z-index:9; pointer-events:none;
+    display:none;
+  }
+  body.modo-livre #livre{ display:block; }
+  body.modo-livre .camada:not(#carregando),
+  body.modo-livre #progresso{ display:none; }
+  #livre .topo{
+    position:absolute; top:max(20px, env(safe-area-inset-top)); left:0; right:0;
+    margin:0; text-align:center; padding:0 16px;
+    font-size:0.62rem; letter-spacing:0.22em; text-transform:uppercase; color:var(--cream-dim);
+    text-shadow:0 1px 12px rgba(0,0,0,0.9);
+  }
+  #livre .rodape{
+    position:absolute; left:0; right:0; bottom:max(22px, env(safe-area-inset-bottom));
+    display:flex; flex-direction:column; align-items:center; gap:1rem; padding:0 16px; text-align:center;
+  }
+  #livre .dica-livre{
+    margin:0; font-family:'Cormorant Garamond', Georgia, serif; font-style:italic;
+    font-size:1.05rem; color:var(--cream); text-shadow:0 1px 16px rgba(0,0,0,0.9);
+    transition:opacity 1.2s ease;
+  }
+  #livre .dica-livre small{ display:block; font-size:0.86rem; color:var(--cream-dim); margin-top:0.2rem; }
+  #livre .dica-livre.sumiu{ opacity:0; }
+
+  /* ---------- versão simples (sem webgl / movimento reduzido) ---------- */
+  #simples{ display:none; position:relative; z-index:8; background:var(--bg); }
+  body.modo-simples #cena,
+  body.modo-simples #trilho,
+  body.modo-simples .camada:not(#carregando),
+  body.modo-simples .grao,
+  body.modo-simples .vinheta,
+  body.modo-simples #progresso{ display:none !important; }
+  body.modo-simples #simples{ display:block; }
+  body.modo-simples{
+    background:
+      radial-gradient(1px 1px at 12% 18%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 72% 8%, #ffe6f0 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 42% 32%, #fff 50%, transparent 51%),
+      radial-gradient(1px 1px at 88% 46%, #e8dcff 50%, transparent 51%),
+      radial-gradient(1px 1px at 22% 64%, #fff 50%, transparent 51%),
+      radial-gradient(1.5px 1.5px at 64% 78%, #ffe6f0 50%, transparent 51%),
+      var(--bg);
+    background-attachment:fixed;
+  }
+  #simples{ background:transparent; }
+  #simples .bloco{
+    min-height:78vh; display:flex; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center;
+    padding:10vh 7vw; gap:1.4rem;
+    opacity:0; transform:translateY(24px);
+    transition:opacity 1s ease, transform 1s ease;
+  }
+  #simples .bloco.on{ opacity:1; transform:none; }
+  #simples .frase{
+    font-family:'Cormorant Garamond', Georgia, serif; font-style:italic;
+    font-size:clamp(1.6rem, 5.5vw, 2.8rem); line-height:1.45; max-width:22ch; margin:0;
+  }
+  #simples .legenda{
+    font-family:'Cormorant Garamond', Georgia, serif; font-style:italic;
+    color:var(--cream-dim); font-size:1.05rem; max-width:28ch; margin:0.4rem 0 0;
+  }
+  #simples img.polaroide{
+    width:min(74vw, 330px); border-radius:2px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.6);
+    border:9px solid #fbeff3;
+  }
+  #simples .mosaico{ display:grid; grid-template-columns:repeat(8, 1fr); gap:4px; width:min(88vw, 420px); }
+  #simples .mosaico img{ width:100%; aspect-ratio:1; object-fit:cover; border-radius:3px; }
+  #simples .grande{
+    font-family:'Cormorant Garamond', Georgia, serif; font-style:italic;
+    font-size:clamp(2.6rem, 11vw, 5rem); margin:0; line-height:1.05;
+  }
+  #simples .mini{ font-size:0.72rem; letter-spacing:0.3em; text-transform:uppercase; color:var(--gold); }
+</style>
+</head>
+<body>
+
+<canvas id="cena"></canvas>
+<div id="trilho"></div>
+<div class="vinheta"></div>
+<div class="grao"></div>
+
+<div id="progresso"><span class="casca"></span><span class="cheio"></span></div>
+
+<div class="camada" id="dica">
+  <div>
+    <div class="linha"></div>
+    <span>role devagar</span>
+  </div>
+</div>
+
+<!-- os textos do bilhete e do final vêm do TEXTOS, no começo do <script> -->
+<div class="camada" id="bilhete">
+  <div class="selo">um bilhete</div>
+  <p class="texto"></p>
+</div>
+
+<div class="camada" id="final">
+  <p class="pre"></p>
+  <h1></h1>
+  <p class="sub"></p>
+  <div class="botoes">
+    <button class="botao" id="olharCeu">olhar o céu</button>
+    <button class="botao" id="verDeNovo">ver de novo</button>
+  </div>
+</div>
+
+<div id="livre">
+  <p class="topo" id="livreTopo"></p>
+  <div class="rodape">
+    <p class="dica-livre" id="livreDica">arraste para olhar em volta<small id="livreDicaNossa"></small></p>
+    <button class="botao" id="voltar" style="pointer-events:auto">voltar</button>
+  </div>
+</div>
+
+<div class="camada" id="carregando">
+  <div class="pulso"></div>
+  <p>preparando o céu</p>
+</div>
+
+<div id="simples"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
+<script src="astro.js"></script>
+<script src="estrelas.js"></script>
+<script src="fotos.js"></script>
+<script>
+(function(){
+"use strict";
+
+/* ============================================================
+   TUDO QUE É DO CASAL FICA AQUI
+   (a data, o lugar, as iniciais, as fotos e os textos)
+   ============================================================ */
+
+/* a noite do primeiro beijo do Romario e da Julia: o céu, a lua, os planetas e a terra
+   se recalculam sozinhos. a hora certa ninguém sabe, então ficou 21h (a lua cheia
+   nascendo); se descobrirem, é só trocar */
+var NOITE = {
+  dia: 8, mes: 10, ano: 2025,
+  hora: '21:00',
+  fuso: '-03:00',
+  lugar: 'Esteio',
+  lat: -29.861, lon: -51.179
+};
+
+/* o nome da constelação do casal */
+var INICIAIS = 'R.J';
+
+/* as fotos grandes, na ordem em que aparecem.
+   id = nome do arquivo na pasta fotos/, sem a extensão.
+   foco (opcional) = onde cortar a foto: 0 = topo, 1 = base (o padrão é 0.4).
+   depois de mexer aqui, rode o ferramentas/preparar-fotos.py
+   (as legendas são frases que o Romario mandou) */
+var MEMORIAS = [
+  { id:'foto01', foco:0.15, legenda:'desde que você chegou, meus dias ganharam uma cor diferente' },
+  { id:'foto03', legenda:'seu jeito me lembra a delicadeza de um lírio' },
+  { id:'foto15', legenda:'e seu sorriso me faz pensar em um girassol procurando sempre pela luz' },
+  { id:'foto11', legenda:'talvez porque, de alguma forma, você também se tornou a minha luz' },
+  { id:'foto06', foco:0.3, legenda:'cada momento ao seu lado parece uma música que eu nunca quero que termine' },
+  { id:'foto09', legenda:'com você, aprendi que amor também mora nos pequenos detalhes' },
+  { id:'foto18', legenda:'mora em um olhar, em uma conversa, em uma risada e até em um simples abraço' },
+  { id:'foto25', legenda:'mora na vontade de estar perto mesmo quando não existe nenhum motivo especial' },
+  { id:'foto21', legenda:'minha paixão por você é daquelas que não cabem em uma única fotografia' },
+  { id:'foto20', legenda:'quero continuar colecionando momentos ao seu lado' },
+  { id:'foto26', legenda:'quero que a nossa história continue crescendo como uma flor bem cuidada' },
+  { id:'foto24', legenda:'e o nosso namoro se tornou uma das partes mais bonitas da minha vida' }
+];
+
+/* os textos, na ordem da viagem. \n quebra a linha; {lugar} e {data} se preenchem sozinhos.
+   o bilhete e a frase de baixo do final são frases do Romario; o resto é rascunho */
+var TEXTOS = {
+  abertura:     'o dia do nosso primeiro beijo',
+  comecou:      'foi nesse dia, em {lugar},\nque tudo começou.',
+  beijo:        'ainda lembro do nosso primeiro beijo\ne de como aquele momento mudou tudo.',
+  luzes:        'naquela noite, as luzes da cidade\nescondiam quase tudo.',
+  apagar:       'mas se elas se apagassem\npor um instante...',
+  ceuVerdade:   'esse era o céu de verdade\nem cima da gente.',
+  estrelasViram:'e essas foram as estrelas\nque viram o nosso primeiro beijo.',
+  subir:        'e agora eu te levo\npra ver as nossas estrelas.',
+  mundoGrande:  'e quem diria,\nnesse mundo tão grande...',
+  amorDaVida:   'o amor da minha vida\nestaria bem ali.',
+  viaLactea:    'e bem na nossa frente estava\no coração da Via Láctea.',
+  estrela:      'e cada momento com você\nvirou uma estrela.',
+  constelacao:  'a nossa constelação em {data}',
+  bilhete:      'Meu desejo é continuar descobrindo cada pedacinho da pessoa incrível que você é. E, se a vida permitir, transformar todos esses pequenos momentos em uma história inteira. Uma história que comece com nosso primeiro beijo e tenha muitos capítulos depois dele. Até chegar o dia em que possamos olhar para trás e lembrar de tudo o que construímos juntos.',
+  finalAntes:   'mas de todas as estrelas daquela noite,',
+  finalGrande:  'a mais bonita sempre\nserá você.',
+  finalDepois:  'porque eu quero viver muitos jardins, músicas, sonhos e capítulos da nossa história ao seu lado.',
+  // só na versão simples (aparelhos sem 3D), no lugar da parte das luzes se apagando
+  simples: [
+    'ainda lembro do nosso primeiro beijo e de como aquele momento mudou tudo.',
+    'naquela noite, as luzes da cidade escondiam quase tudo.',
+    'então eu fui atrás das estrelas que viram o nosso primeiro beijo, cada uma exatamente onde estava.'
+  ]
+};
+
+var MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro'];
+function dois(n){ return (n < 10 ? '0' : '') + n; }
+var DATA_NOITE = new Date(NOITE.ano + '-' + dois(NOITE.mes) + '-' + dois(NOITE.dia) + 'T' + NOITE.hora + ':00' + NOITE.fuso);
+var DATA_CURTA = dois(NOITE.dia) + '/' + dois(NOITE.mes);
+var DATA_EXTENSO = NOITE.dia + ' de ' + MESES[NOITE.mes - 1] + ' de ' + NOITE.ano;
+var HORA_TEXTO = NOITE.hora.replace(':', 'h');
+
+function texto(nome){
+  return TEXTOS[nome].replace(/\{lugar\}/g, NOITE.lugar).replace(/\{data\}/g, DATA_EXTENSO);
+}
+function escreverComQuebras(el, txt){
+  el.textContent = '';
+  txt.split('\n').forEach(function(linha, i){
+    if (i) el.appendChild(document.createElement('br'));
+    el.appendChild(document.createTextNode(linha));
+  });
+}
+escreverComQuebras(document.querySelector('#bilhete .texto'), texto('bilhete'));
+escreverComQuebras(document.querySelector('#final .pre'), texto('finalAntes'));
+escreverComQuebras(document.querySelector('#final h1'), texto('finalGrande'));
+escreverComQuebras(document.querySelector('#final .sub'), texto('finalDepois'));
+
+/* ============================================================
+   utilidades
+   ============================================================ */
+
+var RAD = Math.PI / 180, GRAU = 180 / Math.PI;
+function clamp(v, a, b){ return v < a ? a : (v > b ? b : v); }
+function lerp(a, b, k){ return a + (b - a) * k; }
+function suave(x){ return x * x * (3 - 2 * x); }
+function faixa(v, a, b){ return clamp((v - a) / (b - a), 0, 1); }
+function saida3(x){ return 1 - Math.pow(1 - x, 3); }
+function janelaDoScroll(j, t){
+  if (!j) return 1;
+  return faixa(t, j[0], j[1]) * (1 - faixa(t, j[2], j[3]));
+}
+function sorteio(semente){
+  return function(){
+    semente |= 0; semente = semente + 0x6D2B79F5 | 0;
+    var t = Math.imul(semente ^ semente >>> 15, 1 | semente);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function difAz(a, b){ return ((a - b + 540) % 360) - 180; }
+
+var temThree = typeof THREE !== 'undefined';
+var temWebGL = temThree && (function(){
+  try {
+    var c = document.createElement('canvas');
+    return !!(window.WebGLRenderingContext && (c.getContext('webgl') || c.getContext('experimental-webgl')));
+  } catch(e){ return false; }
+})();
+var movimentoReduzido = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var pedeSimples = /[?&]simples=1/.test(window.location.search);
+var tInicial = (function(){ var m = /[?&]t=([\d.]+)/.exec(window.location.search); return m ? clamp(parseFloat(m[1]), 0, 1) : null; })();
+var celular = Math.min(window.innerWidth, window.innerHeight) < 700;
+// ?teste=1 desenha só quando pedem (para tirar prints em navegadores de teste)
+var MODO_TESTE = /[?&]teste=1/.test(window.location.search);
+
+/* ============================================================
+   o céu daquela noite
+   ============================================================ */
+
+var ceu, cruz, destaque, nucleo;
+
+function altAzDoVetor(v){
+  var n = Math.sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+  return { alt: Math.asin(v[1] / n) * GRAU, az: (Math.atan2(v[0], -v[2]) * GRAU + 360) % 360 };
+}
+function separacao(a, b){
+  var va = ASTRO.vetor(a.alt, a.az), vb = ASTRO.vetor(b.alt, b.az);
+  return Math.acos(clamp(va[0]*vb[0] + va[1]*vb[1] + va[2]*vb[2], -1, 1)) * GRAU;
+}
+
+function calcularCeu(){
+  ceu = ASTRO.montarCeu({ data: DATA_NOITE, lat: NOITE.lat, lon: NOITE.lon });
+
+  // centro do cruzeiro: média das quatro estrelas principais
+  var soma = [0, 0, 0];
+  [[186.650,-63.099],[187.792,-57.113],[191.930,-59.689],[183.786,-58.749]].forEach(function(s){
+    var h = ceu.daJ2000(s[0], s[1]);
+    var v = ASTRO.vetor(h.alt, h.az);
+    soma[0] += v[0]; soma[1] += v[1]; soma[2] += v[2];
+  });
+  cruz = altAzDoVetor(soma);
+  nucleo = ceu.daJ2000(266.405, -28.936);      // o centro da via láctea
+  destaque = escolherDestaque();
+}
+
+/* em algumas noites o cruzeiro está quase no horizonte, e aí a cena muda um pouco */
+function cruzBaixo(){ return cruz.alt < 15; }
+
+function textoCruz(){
+  var onde;
+  if (cruzBaixo()) {
+    onde = Math.abs(difAz(cruz.az, 180)) < 25 ? 'no sul' : (cruz.az < 180 ? 'no sudeste' : 'no sudoeste');
+    return 'o Cruzeiro do Sul estava baixinho,\n' + (cruz.az < 180 ? 'nascendo ' : 'se deitando ') + onde + '.';
+  }
+  if (Math.abs(difAz(cruz.az, 180)) < 8) onde = 'em pé, exatamente no sul.';
+  else if (cruz.az < 180) onde = 'subindo pelo sudeste.';
+  else onde = 'deitando pro sudoeste.';
+  return 'o Cruzeiro do Sul estava lá no alto,\n' + onde;
+}
+
+function escolherDestaque(){
+  var lua = ceu.lua, jup = ceu.planetas.jupiter;
+  if (lua.alt > 1.2 && lua.fracao > 0.05) {
+    var f = lua.fracao;
+    var fase = f < 0.38 ? 'fininha' : f < 0.62 ? 'pela metade' : f < 0.94 ? 'quase cheia' : 'cheia';
+    var comJup = jup.alt > 0.6 && separacao(lua, jup) < 14;
+    var verbo = lua.alt > 22 ? 'brilhando' : (lua.az > 180 ? 'se despedindo' : 'nascendo');
+    var fim = comJup ? 'juntinha de Júpiter.' : (lua.alt > 22 ? 'lá em cima.' : 'no horizonte.');
+    var az = comJup ? (lua.az + difAz(jup.az, lua.az) / 2 + 360) % 360 : lua.az;
+    var base = comJup ? Math.min(lua.alt, jup.alt) : lua.alt;
+    var rot = [{ txt:'lua', alt: lua.alt + 2.6, az: lua.az }];
+    if (comJup) rot.push({ txt:'Júpiter', alt: jup.alt + 2.2, az: jup.az });
+    return {
+      az: az,
+      olhaAlt: lua.alt > 22 ? lua.alt : base + 9,
+      texto: 'e a lua, ' + fase + ', ' + verbo + '\n' + fim,
+      rotulos: rot
+    };
+  }
+  var ant = ceu.daJ2000(247.352, -26.432);
+  if (ant.alt > 8) {
+    return {
+      az: ant.az, olhaAlt: ant.alt,
+      texto: 'e o Escorpião ' + (ant.az < 180 ? 'subindo' : 'se pondo') + ',\ncom Antares, o coração dele,\nbem vermelhinha.',
+      rotulos: [{ txt:'Antares', alt: ant.alt - 2.4, az: ant.az }],
+      linhas: 'Sco'
+    };
+  }
+  return null;
+}
+
+/* ============================================================
+   versão simples (fallback)
+   ============================================================ */
+
+function montarVersaoSimples(){
+  document.body.classList.add('modo-simples');
+  var alvo = document.getElementById('simples');
+  var destaques = window.FOTOS_DESTAQUE || {};
+  var minis = window.FOTOS_MINI || {};
+
+  function emLinha(txt){ return txt.replace(/\n/g, ' '); }
+  function comBr(txt){ return txt.replace(/\n/g, '<br>'); }
+  var partes = [
+    { grande: DATA_CURTA },
+    { mini: texto('abertura') },
+    { frase: emLinha(texto('comecou')) }
+  ];
+  TEXTOS.simples.forEach(function(f){ partes.push({ frase: f }); });
+  MEMORIAS.forEach(function(m){ partes.push({ foto: m.id, legenda: m.legenda }); });
+  partes.push({ frase: emLinha(texto('estrela')) });
+  partes.push({ mosaico: true });
+  partes.push({ bilhete: true });
+  partes.push({ fim: true });
+
+  var html = '';
+  partes.forEach(function(p){
+    html += '<div class="bloco">';
+    if (p.grande) html += '<p class="grande serif">' + p.grande + '</p>';
+    if (p.mini) html += '<span class="mini">' + p.mini + '</span>';
+    if (p.frase) html += '<p class="frase serif">' + p.frase + '</p>';
+    if (p.foto && destaques[p.foto]) {
+      html += '<img class="polaroide" src="' + destaques[p.foto].uri + '" alt="">';
+      html += '<p class="legenda">' + p.legenda + '</p>';
+    }
+    if (p.mosaico) {
+      html += '<div class="mosaico">';
+      Object.keys(minis).forEach(function(k){ html += '<img src="' + (minis[k].uri || minis[k]) + '" alt="">'; });
+      html += '</div><p class="legenda">' + INICIAIS + ' · ' + texto('constelacao') + '</p>';
+    }
+    if (p.bilhete) html += '<p class="legenda" style="max-width:42ch;font-size:1.15rem;line-height:1.9;color:var(--cream)">' + comBr(texto('bilhete')) + '</p>';
+    if (p.fim) {
+      html += '<p class="legenda">' + emLinha(texto('finalAntes')) + '</p>';
+      html += '<p class="grande serif">' + comBr(texto('finalGrande')) + '</p>';
+      html += '<p class="legenda">' + emLinha(texto('finalDepois')) + '</p>';
+    }
+    html += '</div>';
+  });
+  alvo.innerHTML = html;
+
+  var blocos = alvo.querySelectorAll('.bloco');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(ents){
+      ents.forEach(function(e){ if (e.isIntersecting) e.target.classList.add('on'); });
+    }, { threshold: 0.25 });
+    blocos.forEach(function(b){ io.observe(b); });
+  } else {
+    blocos.forEach(function(b){ b.classList.add('on'); });
+  }
+  document.getElementById('carregando').classList.add('saiu');
+}
+
+/* ============================================================
+   texturas desenhadas em canvas
+   ============================================================ */
+
+var PPU = 26; // pixels de canvas por unidade do mundo
+
+function novoCanvas(w, h){
+  var c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  return c;
+}
+
+function quebrarLinhas(ctx, texto, maxLarg){
+  var saida = [];
+  texto.split('\n').forEach(function(paragrafo){
+    var palavras = paragrafo.split(' ');
+    var linha = '';
+    palavras.forEach(function(p){
+      var teste = linha ? linha + ' ' + p : p;
+      if (ctx.measureText(teste).width > maxLarg && linha) {
+        saida.push(linha);
+        linha = p;
+      } else {
+        linha = teste;
+      }
+    });
+    saida.push(linha);
+  });
+  return saida;
+}
+
+function texturaTexto(cfg){
+  var px = cfg.px || 90;
+  var maxLarg = cfg.larg || 1200;
+  var pad = Math.round(px * 1.1);
+  var fonte = (cfg.italic ? 'italic ' : '') + (cfg.peso || 400) + ' ' + px + 'px "Cormorant Garamond", Georgia, serif';
+  if (cfg.espaco) fonte = (cfg.peso || 300) + ' ' + px + 'px "Jost", sans-serif';
+
+  var medida = novoCanvas(10, 10).getContext('2d');
+  medida.font = fonte;
+  if (cfg.espaco && medida.letterSpacing !== undefined) medida.letterSpacing = cfg.espaco + 'px';
+
+  // Safari mais antigo não tem letterSpacing no canvas: aí a gente espaça letra por letra
+  var espacoManual = cfg.espaco && medida.letterSpacing === undefined;
+  function larguraDe(ctx, l){
+    if (!espacoManual) return ctx.measureText(l).width;
+    var total = 0;
+    for (var i = 0; i < l.length; i++) total += ctx.measureText(l[i]).width + (i < l.length - 1 ? cfg.espaco : 0);
+    return total;
+  }
+  function escrever(ctx, l, cx, y){
+    if (!espacoManual) { ctx.fillText(l, cx, y); return; }
+    var x = cx - larguraDe(ctx, l) / 2;
+    ctx.textAlign = 'left';
+    for (var i = 0; i < l.length; i++) { ctx.fillText(l[i], x, y); x += ctx.measureText(l[i]).width + cfg.espaco; }
+    ctx.textAlign = 'center';
+  }
+
+  var linhas = quebrarLinhas(medida, cfg.txt, maxLarg);
+  var alturaLinha = Math.round(px * 1.32);
+  var larguraTexto = 0;
+  linhas.forEach(function(l){ larguraTexto = Math.max(larguraTexto, larguraDe(medida, l)); });
+
+  var w = Math.min(2048, Math.ceil(larguraTexto + pad * 2));
+  var h = Math.ceil(linhas.length * alturaLinha + pad * 2);
+
+  var c = novoCanvas(w, h);
+  var ctx = c.getContext('2d');
+  ctx.font = fonte;
+  if (cfg.espaco && ctx.letterSpacing !== undefined) ctx.letterSpacing = cfg.espaco + 'px';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // brilho (várias passadas = bloom barato)
+  ctx.shadowColor = cfg.brilho || 'rgba(255,159,197,0.6)';
+  for (var passo = 0; passo < 3; passo++) {
+    ctx.shadowBlur = [px * 0.9, px * 0.45, px * 0.16][passo];
+    ctx.fillStyle = cfg.cor || '#fdeef4';
+    linhas.forEach(function(l, i){
+      escrever(ctx, l, w / 2, pad + alturaLinha * (i + 0.5));
+    });
+  }
+
+  return { canvas:c, w:w, h:h, px:px };
+}
+
+function texturaPolaroide(img, legenda){
+  var margem = 46;
+  var moldura = 24;
+  var base = 128;
+  var larguraFoto = img.naturalWidth >= img.naturalHeight ? 640 : 540;
+  var alturaFoto = Math.round(larguraFoto / (img.naturalWidth / img.naturalHeight));
+
+  var cardW = larguraFoto + moldura * 2;
+  var cardH = alturaFoto + moldura + base;
+  var w = cardW + margem * 2;
+  var h = cardH + margem * 2;
+
+  var c = novoCanvas(w, h);
+  var ctx = c.getContext('2d');
+
+  ctx.save();
+  ctx.shadowColor = 'rgba(255,170,210,0.45)';
+  ctx.shadowBlur = 44;
+  var grad = ctx.createLinearGradient(margem, margem, margem, margem + cardH);
+  grad.addColorStop(0, '#fcf1f5');
+  grad.addColorStop(1, '#eedbe6');
+  ctx.fillStyle = grad;
+  ctx.fillRect(margem, margem, cardW, cardH);
+  ctx.restore();
+
+  ctx.drawImage(img, margem + moldura, margem + moldura, larguraFoto, alturaFoto);
+
+  var vin = ctx.createRadialGradient(
+    margem + moldura + larguraFoto / 2, margem + moldura + alturaFoto / 2, alturaFoto * 0.25,
+    margem + moldura + larguraFoto / 2, margem + moldura + alturaFoto / 2, alturaFoto * 0.78
+  );
+  vin.addColorStop(0, 'rgba(0,0,0,0)');
+  vin.addColorStop(1, 'rgba(30,12,40,0.24)');
+  ctx.fillStyle = vin;
+  ctx.fillRect(margem + moldura, margem + moldura, larguraFoto, alturaFoto);
+
+  ctx.fillStyle = '#6e4264';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  var fPx = 36;
+  ctx.font = 'italic 400 ' + fPx + 'px "Cormorant Garamond", Georgia, serif';
+  var linhas = quebrarLinhas(ctx, legenda || '', larguraFoto - 20);
+  var y0 = margem + moldura + alturaFoto + base / 2 - (linhas.length - 1) * fPx * 0.62;
+  linhas.forEach(function(l, i){
+    ctx.fillText(l, margem + cardW / 2, y0 + i * fPx * 1.24);
+  });
+
+  return { canvas:c, w:w, h:h, cardW:cardW, cardH:cardH };
+}
+
+function texturaBrilho(cor){
+  var s = 256;
+  var c = novoCanvas(s, s);
+  var ctx = c.getContext('2d');
+  var g = ctx.createRadialGradient(s/2, s/2, 0, s/2, s/2, s/2);
+  g.addColorStop(0.0, cor.replace('ALPHA', '0.95'));
+  g.addColorStop(0.18, cor.replace('ALPHA', '0.42'));
+  g.addColorStop(0.5, cor.replace('ALPHA', '0.10'));
+  g.addColorStop(1.0, cor.replace('ALPHA', '0'));
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, s, s);
+  return c;
+}
+
+function texturaAnel(){
+  var s = 256;
+  var c = novoCanvas(s, s);
+  var ctx = c.getContext('2d');
+  ctx.strokeStyle = 'rgba(255,160,205,0.95)';
+  ctx.shadowColor = 'rgba(255,120,180,1)';
+  ctx.shadowBlur = 18;
+  ctx.lineWidth = 7;
+  ctx.beginPath(); ctx.arc(s / 2, s / 2, s * 0.34, 0, Math.PI * 2); ctx.stroke();
+  ctx.fillStyle = 'rgba(255,200,225,1)';
+  ctx.beginPath(); ctx.arc(s / 2, s / 2, 7, 0, Math.PI * 2); ctx.fill();
+  return c;
+}
+
+function retanguloRedondo(ctx, x, y, w, h, r){
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function texturaMini(img){
+  var s = 200, b = 9;
+  var c = novoCanvas(s, s);
+  var ctx = c.getContext('2d');
+  ctx.fillStyle = '#fbeff3';
+  retanguloRedondo(ctx, 0, 0, s, s, 12);
+  ctx.fill();
+  ctx.save();
+  retanguloRedondo(ctx, b, b, s - b * 2, s - b * 2, 7);
+  ctx.clip();
+  ctx.drawImage(img, b, b, s - b * 2, s - b * 2);
+  ctx.restore();
+  return c;
+}
+
+/* a lua na fase certa , o lado aceso fica em +x */
+function texturaLua(fracao){
+  var s = 256, r = 100;
+  var c = novoCanvas(s, s);
+  var ctx = c.getContext('2d');
+  ctx.translate(s / 2, s / 2);
+  ctx.fillStyle = '#fff4ea';
+  ctx.beginPath();
+  ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2);
+  ctx.closePath();
+  ctx.fill();
+  var k = 1 - 2 * fracao;
+  ctx.save();
+  if (k > 0) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.fillStyle = '#000';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, Math.max(0.5, r * k), r + 1, 0, 0, Math.PI * 2);
+    ctx.fill();
+  } else {
+    ctx.fillStyle = '#fff4ea';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, Math.max(0.5, -r * k), r, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+  // luz cinérea, o resto da lua quase invisível
+  ctx.save();
+  ctx.globalCompositeOperation = 'destination-over';
+  ctx.fillStyle = 'rgba(140,125,170,0.2)';
+  ctx.beginPath();
+  ctx.arc(0, 0, r, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+  return c;
+}
+
+/* ============================================================
+   a terra vista lá de cima: costa, lagoas e luzes das cidades
+   ============================================================ */
+
+var RAIO_TERRA = 6371;      // o mundo 3d usa km quando a gente sobe
+var ALT_BAIXO = 380;         // altura da estação espacial, mais ou menos
+var ALT_GLOBO = 18000;       // de onde dá pra ver o planeta inteiro (acertado conforme a tela, em prepararVetores)
+var URL_TERRA_NOITE = 'https://cdn.jsdelivr.net/npm/three-globe@2.41.12/example/img/earth-night.jpg';
+var URL_TERRA_DIA = 'https://cdn.jsdelivr.net/npm/three-globe@2.41.12/example/img/earth-blue-marble.jpg';
+var URL_PAISES = 'https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json';
+
+function carregarImagemDeFora(url){
+  return new Promise(function(resolve){
+    var img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = function(){ resolve(img); };
+    img.onerror = function(){ resolve(null); };
+    img.src = url;
+  });
+}
+var promessaTerra = Promise.all([carregarImagemDeFora(URL_TERRA_DIA), carregarImagemDeFora(URL_TERRA_NOITE)]);
+var promessaPaises = window.fetch
+  ? fetch(URL_PAISES).then(function(r){ return r.json(); }).catch(function(){ return null; })
+  : Promise.resolve(null);
+function comLimite(promessa, ms){ return Promise.race([promessa, new Promise(function(r){ setTimeout(r, ms); })]); }
+
+/* no celular a foto do dia não precisa de 4096 px (a terra ocupa só a largura da tela) */
+function imagemNoTamanho(img, maxLarg){
+  if (img.width <= maxLarg) return img;
+  var c = document.createElement('canvas');
+  c.width = maxLarg; c.height = Math.round(img.height * maxLarg / img.width);
+  c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+  return c;
+}
+var MAPA_KM = 2000;          // o mapa de luzes cobre 1000 km pra cada lado
+
+var CIDADES = [
+  ['Esteio', -29.86, -51.18, 0.6], ['Sapucaia do Sul', -29.83, -51.15, 0.7], ['Porto Alegre', -30.03, -51.23, 3.2], ['Canoas', -29.92, -51.18, 1.3],
+  ['Novo Hamburgo', -29.68, -51.13, 1.1], ['São Leopoldo', -29.76, -51.15, 1.0], ['Gravataí', -29.94, -50.99, 1.0],
+  ['Alvorada', -30.00, -51.08, 0.8], ['Viamão', -30.08, -51.02, 0.7], ['Guaíba', -30.11, -51.33, 0.4],
+  ['Caxias do Sul', -29.17, -51.18, 1.6], ['Bento Gonçalves', -29.17, -51.52, 0.6], ['Santa Cruz do Sul', -29.72, -52.43, 0.7],
+  ['Lajeado', -29.47, -51.96, 0.5], ['Montenegro', -29.69, -51.46, 0.4], ['Taquara', -29.65, -50.78, 0.4],
+  ['Tramandaí', -29.98, -50.13, 0.5], ['Capão da Canoa', -29.75, -50.01, 0.4], ['Torres', -29.33, -49.73, 0.4],
+  ['Pelotas', -31.77, -52.34, 1.3], ['Rio Grande', -32.03, -52.10, 0.9], ['Santa Maria', -29.69, -53.81, 1.1],
+  ['Passo Fundo', -28.26, -52.41, 0.9], ['Bagé', -31.33, -54.10, 0.6], ['Uruguaiana', -29.75, -57.09, 0.6],
+  ['Santana do Livramento', -30.89, -55.53, 0.6], ['Erechim', -27.63, -52.27, 0.5], ['Ijuí', -28.39, -53.91, 0.5],
+  ['Santo Ângelo', -28.30, -54.26, 0.4], ['Cachoeira do Sul', -30.04, -52.89, 0.4], ['Camaquã', -30.85, -51.81, 0.3],
+  ['Criciúma', -28.68, -49.37, 0.8], ['Tubarão', -28.47, -49.01, 0.5], ['Florianópolis', -27.60, -48.55, 1.5],
+  ['Itajaí', -26.91, -48.66, 0.8], ['Blumenau', -26.92, -49.07, 0.9], ['Joinville', -26.30, -48.85, 1.2],
+  ['Lages', -27.82, -50.33, 0.6], ['Chapecó', -27.10, -52.62, 0.7], ['Curitiba', -25.43, -49.27, 2.8],
+  ['Ponta Grossa', -25.09, -50.16, 0.8], ['Cascavel', -24.96, -53.46, 0.7], ['Foz do Iguaçu', -25.54, -54.58, 0.7],
+  ['Londrina', -23.31, -51.16, 1.0], ['Maringá', -23.42, -51.94, 0.9], ['São Paulo', -23.55, -46.63, 5.0],
+  ['Campinas', -22.91, -47.06, 1.6], ['Sorocaba', -23.50, -47.46, 1.0], ['Santos', -23.96, -46.33, 1.0],
+  ['Montevidéu', -34.90, -56.16, 2.3], ['Punta del Este', -34.96, -54.95, 0.5], ['Colonia', -34.47, -57.84, 0.3],
+  ['Salto', -31.39, -57.96, 0.4], ['Rivera', -30.90, -55.55, 0.4], ['Buenos Aires', -34.60, -58.38, 4.6],
+  ['La Plata', -34.92, -57.95, 1.0], ['Rosário', -32.95, -60.64, 1.6], ['Santa Fé', -31.63, -60.70, 0.8],
+  ['Paraná', -31.73, -60.52, 0.6], ['Mar del Plata', -38.00, -57.55, 0.9], ['Posadas', -27.37, -55.90, 0.6],
+  ['Corrientes', -27.47, -58.83, 0.7], ['Resistencia', -27.45, -58.99, 0.6], ['Assunção', -25.26, -57.58, 1.3],
+  ['Ciudad del Este', -25.51, -54.61, 0.6], ['Concordia', -31.39, -58.02, 0.5]
+];
+var ESTRADAS = [
+  ['Porto Alegre','Canoas'],['Canoas','Esteio'],['Esteio','Sapucaia do Sul'],['Sapucaia do Sul','São Leopoldo'],['São Leopoldo','Novo Hamburgo'],
+  ['Novo Hamburgo','Caxias do Sul'],['Caxias do Sul','Bento Gonçalves'],['Caxias do Sul','Passo Fundo'],['Passo Fundo','Erechim'],
+  ['Porto Alegre','Gravataí'],['Gravataí','Taquara'],['Porto Alegre','Tramandaí'],['Tramandaí','Capão da Canoa'],['Capão da Canoa','Torres'],
+  ['Torres','Criciúma'],['Criciúma','Tubarão'],['Tubarão','Florianópolis'],['Florianópolis','Itajaí'],['Itajaí','Joinville'],
+  ['Joinville','Curitiba'],['Curitiba','Sorocaba'],['Sorocaba','São Paulo'],['São Paulo','Campinas'],['São Paulo','Santos'],
+  ['Curitiba','Ponta Grossa'],['Ponta Grossa','Londrina'],['Londrina','Maringá'],['Ponta Grossa','Cascavel'],['Cascavel','Foz do Iguaçu'],
+  ['Canoas','Montenegro'],['Montenegro','Lajeado'],['Lajeado','Passo Fundo'],['Porto Alegre','Santa Cruz do Sul'],
+  ['Santa Cruz do Sul','Santa Maria'],['Santa Maria','Ijuí'],['Ijuí','Santo Ângelo'],['Santa Maria','Uruguaiana'],
+  ['Porto Alegre','Camaquã'],['Camaquã','Pelotas'],['Pelotas','Rio Grande'],['Pelotas','Bagé'],['Bagé','Santana do Livramento'],
+  ['Passo Fundo','Chapecó'],['Chapecó','Lages'],['Lages','Tubarão'],['Montevidéu','Punta del Este'],['Montevidéu','Colonia'],
+  ['Buenos Aires','La Plata'],['Buenos Aires','Rosário'],['Rosário','Santa Fé'],['Buenos Aires','Mar del Plata'],
+  ['Posadas','Foz do Iguaçu'],['Corrientes','Posadas'],['Assunção','Ciudad del Este'],['Salto','Concordia'],['Uruguaiana','Concordia']
+];
+var AGUAS = [
+  // atlântico e rio da prata
+  [[-20,-40.5],[-22.9,-42.0],[-23.0,-44.3],[-23.9,-46.3],[-24.7,-47.6],[-25.5,-48.4],[-26.2,-48.55],[-26.9,-48.6],[-27.4,-48.45],
+   [-27.8,-48.5],[-28.5,-48.75],[-29.3,-49.7],[-30.0,-50.1],[-30.7,-50.5],[-31.4,-51.0],[-32.1,-52.05],[-32.7,-52.55],[-33.7,-53.4],
+   [-34.4,-53.8],[-34.95,-54.9],[-34.9,-55.9],[-34.9,-56.3],[-34.5,-57.3],[-34.45,-57.9],[-34.2,-58.3],[-34.55,-58.45],
+   [-34.9,-57.9],[-35.4,-57.2],[-36.3,-56.7],[-37.3,-57.1],[-38.0,-57.5],[-38.7,-59.0],[-39.0,-61.5],[-40.0,-62.3],[-41.0,-63.0],
+   [-46,-63],[-46,-30],[-20,-30]],
+  // lagoa dos patos e guaíba
+  [[-30.18,-51.2],[-30.25,-50.95],[-30.5,-50.6],[-30.9,-50.7],[-31.3,-51.0],[-31.7,-51.4],[-31.95,-51.75],[-32.1,-52.05],
+   [-31.85,-52.1],[-31.5,-51.75],[-31.1,-51.4],[-30.7,-51.3],[-30.35,-51.3],[-30.25,-51.32],[-30.05,-51.28],[-29.98,-51.24]],
+  // lagoa mirim
+  [[-32.25,-52.6],[-32.55,-52.55],[-33.0,-52.85],[-33.5,-53.25],[-33.65,-53.45],[-33.3,-53.55],[-32.8,-53.25],[-32.4,-52.85]]
+];
+
+function geoParaKm(lat, lon){
+  return [(lon - NOITE.lon) * 111.32 * Math.cos(NOITE.lat * RAD), (NOITE.lat - lat) * 110.57];
+}
+
+function criarMapaDaTerra(){
+  var N = 2048;   // potência de 2, para o celular poder usar mipmap
+  var esc = N / MAPA_KM;
+  var sorte = sorteio(4242);
+  function px(lat, lon){ var k = geoParaKm(lat, lon); return [N / 2 + k[0] * esc, N / 2 + k[1] * esc]; }
+  function gauss(){ var u = Math.max(1e-6, sorte()), v = sorte(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); }
+
+  var c = novoCanvas(N, N);
+  var ctx = c.getContext('2d');
+  ctx.fillStyle = 'rgb(5,5,9)';
+  ctx.fillRect(0, 0, N, N);
+  ctx.fillStyle = 'rgb(1,2,8)';
+  AGUAS.forEach(function(poli){
+    ctx.beginPath();
+    poli.forEach(function(ll, i){ var q = px(ll[0], ll[1]); if (i) ctx.lineTo(q[0], q[1]); else ctx.moveTo(q[0], q[1]); });
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // máscara de água, para não acender luz no mar
+  var M = 512;
+  var mc = novoCanvas(M, M);
+  var mctx = mc.getContext('2d');
+  mctx.drawImage(c, 0, 0, M, M);
+  var mascara = mctx.getImageData(0, 0, M, M).data;
+  function naAgua(x, y){
+    var i = (clamp(Math.floor(y / N * M), 0, M - 1) * M + clamp(Math.floor(x / N * M), 0, M - 1)) * 4;
+    return mascara[i] < 3;
+  }
+
+  ctx.globalCompositeOperation = 'lighter';
+  var tons = ['255,176,92', '255,190,112', '255,214,160', '255,232,205'];
+  function luz(x, y, a, t){
+    if (x < 0 || y < 0 || x >= N || y >= N || naAgua(x, y)) return;
+    ctx.fillStyle = 'rgba(' + tons[(sorte() * tons.length) | 0] + ',' + a.toFixed(3) + ')';
+    ctx.fillRect(x, y, t, t);
+  }
+
+  var porNome = {};
+  CIDADES.forEach(function(cd){ porNome[cd[0]] = cd; });
+
+  // estradas: fiapos de luz ligando as cidades
+  ESTRADAS.forEach(function(par){
+    var a = porNome[par[0]], b = porNome[par[1]];
+    if (!a || !b) return;
+    var pa = px(a[1], a[2]), pb = px(b[1], b[2]);
+    var passos = Math.hypot(pb[0] - pa[0], pb[1] - pa[1]) * 1.4;
+    for (var i = 0; i < passos; i++) {
+      if (sorte() < 0.45) continue;
+      var k = i / passos;
+      var curva = Math.sin(k * Math.PI) * 6 * esc * (a[1] > b[1] ? 1 : -1);
+      luz(lerp(pa[0], pb[0], k) + gauss() * 0.6 + curva * 0.3, lerp(pa[1], pb[1], k) + gauss() * 0.6, 0.05 + sorte() * 0.12, 1);
+    }
+  });
+
+  // luzinhas espalhadas pelo interior
+  for (var r = 0; r < 14000; r++) {
+    var cd = CIDADES[(sorte() * CIDADES.length) | 0];
+    var p0 = px(cd[1], cd[2]);
+    var dsp = (25 + 45 * sorte()) * esc;
+    luz(p0[0] + gauss() * dsp, p0[1] + gauss() * dsp, 0.03 + sorte() * 0.09, 1);
+  }
+  for (r = 0; r < 7000; r++) luz(sorte() * N, sorte() * N, 0.02 + sorte() * 0.06, 1);
+
+  // as cidades: um brilho difuso e um enxame de pontinhos
+  CIDADES.forEach(function(cd){
+    var p = px(cd[1], cd[2]);
+    var peso = cd[3];
+    var raio = (4 + 6 * Math.sqrt(peso)) * esc;
+    var g = ctx.createRadialGradient(p[0], p[1], 0, p[0], p[1], raio);
+    g.addColorStop(0, 'rgba(255,186,110,' + Math.min(0.4, 0.13 * Math.sqrt(peso)).toFixed(3) + ')');
+    g.addColorStop(0.4, 'rgba(255,160,90,' + Math.min(0.14, 0.05 * Math.sqrt(peso)).toFixed(3) + ')');
+    g.addColorStop(1, 'rgba(255,150,80,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(p[0], p[1], raio, 0, Math.PI * 2); ctx.fill();
+    var sigma = (1.6 + 3.0 * Math.sqrt(peso)) * esc;
+    var n = Math.round(380 * peso);
+    for (var i = 0; i < n; i++) {
+      var dx = gauss() * sigma, dy = gauss() * sigma;
+      luz(p[0] + dx, p[1] + dy, 0.16 + sorte() * 0.5, sorte() < 0.2 ? 2 : 1);
+    }
+    // avenidas saindo do centro, que dão aquele formato de teia
+    var ramos = 4 + Math.round(peso * 2.5);
+    for (var rm = 0; rm < ramos; rm++) {
+      var ang = sorte() * Math.PI * 2;
+      var comp = (6 + 12 * Math.sqrt(peso)) * esc * (0.5 + sorte());
+      for (var q2 = 0; q2 < comp * 1.6; q2++) {
+        var f2 = q2 / (comp * 1.6);
+        ang += (sorte() - 0.5) * 0.08;
+        luz(p[0] + Math.cos(ang) * comp * f2 + gauss() * 0.5, p[1] + Math.sin(ang) * comp * f2 + gauss() * 0.5, (0.12 + sorte() * 0.3) * (1 - f2 * 0.6), 1);
+      }
+    }
+  });
+
+  var tex = soltarDepoisDeEnviar(new THREE.CanvasTexture(c));
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.anisotropy = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
+  return tex;
+}
+
+/* ============================================================
+   experiência 3d
+   ============================================================ */
+
+var K_CEU = 60;                               // o céu fica bem longe, atrás até da terra vista de 18 mil km
+function rc(r){ return r * K_CEU; }
+var R_CEU = rc(900);
+var OLHO = 1.6;
+var S_ESTACAO = 690;                          // onde a câmera para para ver o coração se formar
+var S_CORACAO = S_ESTACAO + 224;              // onde o coração se forma
+var DIST_FINAL = 870;                         // a distância do coração visto do chão, no final
+var FOV_CORACAO = 58;
+var ESC_CHAO = 0.8;                           // a parte no chão ocupa 24 das 30 telas de scroll
+function A(x){ return x * ESC_CHAO; }
+function AJ(j){ return j.map(A); }
+
+var renderer, scene, camera, relogio, grupoCeu;
+var curvaPos, curvaOlha, WP;
+var ALT_VOO, G, GRT, GUP, ORIGEM, P_BAIXO, C_GLOBO, H_ESTACAO, H_FINAL, Q_ESTACAO, Q_FINAL, dirCoracao;
+var objetosFade = [];
+var fadesJanela = [];
+var textosParaAjustar = [];
+var rotulosCeu = [];
+var materiaisTela = [];
+var domo, estrelasReais, poeiraVL, viaLactea, texViaLactea, nuvensMagalhaes = [], lua, brilhoLua;
+var linhasTodas, destaqueCruz, destaqueExtra, rotuloNossa;
+var chao, silhueta, luzesCidade, poeira;
+var terra, atmosfera, marcaCasa, coisasDaTerra = [];
+var coracao;
+var alvoT = 0, atualT = 0;
+var tFixo = null;   // só no modo de teste
+var mouseX = 0, mouseY = 0;
+var pronto = false;
+var modoLivre = false;
+var livre = { yaw: 180, pitch: 30, fov: 60, alvoYaw: 180, alvoPitch: 30, alvoFov: 60 };
+
+var vTmp, vFrente, vTela, vBordaA, vBordaB, vPos, vOlha, _CIMA;
+
+function vetor3(alt, az, r){
+  var v = ASTRO.vetor(alt, az);
+  return new THREE.Vector3(v[0] * r, v[1] * r, v[2] * r);
+}
+
+function baseOlhando(frente){
+  var direita = new THREE.Vector3().crossVectors(frente, _CIMA).normalize();
+  var cima = new THREE.Vector3().crossVectors(direita, frente).normalize();
+  return new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(direita, cima, frente.clone().negate()));
+}
+
+function prepararVetores(){
+  vTmp = new THREE.Vector3(); vFrente = new THREE.Vector3(); vTela = new THREE.Vector3();
+  vBordaA = new THREE.Vector3(); vBordaB = new THREE.Vector3();
+  vPos = new THREE.Vector3(); vOlha = new THREE.Vector3();
+  _CIMA = new THREE.Vector3(0, 1, 0);
+
+  // lá longe no espaço, a gente voa em direção ao centro da via láctea
+  // (um pouco abaixo dele, pra ele ficar no alto da tela, atrás das fotos)
+  ALT_VOO = clamp(nucleo.alt - 17, 5, 40);
+  G = vetor3(ALT_VOO, nucleo.az, 1).normalize();
+  GRT = new THREE.Vector3().crossVectors(G, _CIMA).normalize();
+  GUP = new THREE.Vector3().crossVectors(GRT, G).normalize();
+  // a altura em que o planeta enche a tela: mais perto no computador, mais longe no celular em pé
+  var aspecto = window.innerWidth / window.innerHeight;
+  var meiaV = 32 * RAD, meiaH = Math.atan(Math.tan(meiaV) * aspecto);
+  var raioNaTela = Math.min(meiaV, meiaH) * (aspecto < 1 ? 0.92 : 0.84);
+  ALT_GLOBO = clamp(RAIO_TERRA / Math.sin(raioNaTela) - RAIO_TERRA, 6000, 26000);
+
+  ORIGEM = new THREE.Vector3(0, OLHO, 0);
+  P_BAIXO = new THREE.Vector3(0, ALT_BAIXO, 0);
+  C_GLOBO = new THREE.Vector3(0, ALT_GLOBO, 0);
+  H_ESTACAO = pontoDoVoo(S_CORACAO, 0, 0);
+  Q_ESTACAO = baseOlhando(G);
+
+  // e no final o coração fica no céu, pertinho do centro da via láctea
+  dirCoracao = { alt: clamp(nucleo.alt + 8, 22, 60), az: nucleo.az };
+  var F = vetor3(dirCoracao.alt, dirCoracao.az, 1);
+  H_FINAL = ORIGEM.clone().addScaledVector(F, DIST_FINAL);
+  Q_FINAL = baseOlhando(F);
+}
+
+function pontoDoVoo(s, x, y){
+  return C_GLOBO.clone().addScaledVector(G, s).addScaledVector(GRT, x || 0).addScaledVector(GUP, y || 0);
+}
+
+/* a volta pra casa: quanto do caminho já foi (a câmera e o coração andam juntos) */
+var VOLTA = [[0.938, 0], [0.945, 0.2], [0.952, 0.5], [0.958, 0.75], [0.963, 0.9], [0.967, 0.97], [0.970, 0.992], [0.973, 0.998], [0.976, 1]];
+function progressoVolta(t){
+  if (t <= VOLTA[0][0]) return 0;
+  for (var i = 1; i < VOLTA.length; i++) {
+    if (t <= VOLTA[i][0]) return lerp(VOLTA[i - 1][1], VOLTA[i][1], (t - VOLTA[i - 1][0]) / (VOLTA[i][0] - VOLTA[i - 1][0]));
+  }
+  return 1;
+}
+function posicaoCoracao(t){ return H_ESTACAO.clone().lerp(H_FINAL, progressoVolta(t)); }
+
+/* ---- trajeto da câmera ----
+   cada ponto tem: t (progresso do scroll), p (posição), l (para onde olha),
+   r (inclinação em graus), f (campo de visão) */
+var LONGE = 5000;
+function olhando(t, pos, alt, az, fov, r){
+  return { t:t, p: pos.clone(), l: pos.clone().add(vetor3(alt, az, LONGE)), r: r || 0, f: fov };
+}
+function noChao(t, alt, az, fov, r){ return olhando(t, ORIGEM, alt, az, fov, r); }
+function noVoo(t, s, x, y, ls, lx, ly, r, fov){
+  return { t:t, p: pontoDoVoo(s, x, y), l: pontoDoVoo(ls, lx, ly), r: r || 0, f: fov };
+}
+
+function construirTrajeto(){
+  var W = [];
+  var dz = destaque || { az: cruz.az, olhaAlt: cruz.alt - 3 };
+  var alto = function(y){ return new THREE.Vector3(0, y, 0); };
+
+  /* --- no chão, olhando o horizonte da cidade --- */
+  W.push(noChao(A(0.000),  9, 168, 60));
+  W.push(noChao(A(0.036), 11, 170, 60));
+  W.push(noChao(A(0.076), 18, 173, 60));
+  W.push(noChao(A(0.112), 26, 176, 61));
+  W.push(noChao(A(0.150), 33, 178, 62));
+
+  /* --- as luzes se apagam e o céu aparece --- */
+  W.push(noChao(A(0.182), 41, 180, 66));
+  W.push(noChao(A(0.218), 45, 181, 68));
+  W.push(noChao(A(0.254), 47, 180, 66));
+
+  /* --- cruzeiro do sul (baixinho: olha um pouco acima, pro texto caber no céu) --- */
+  var mira = cruzBaixo() ? cruz.alt + 1 : cruz.alt - 3;
+  W.push(noChao(A(0.282), mira, cruz.az, 44));
+  W.push(noChao(A(0.318), mira - 1, cruz.az, 42));
+
+  /* --- a lua (ou o escorpião) --- */
+  W.push(noChao(A(0.346), dz.olhaAlt, dz.az, 46));
+  W.push(noChao(A(0.372), dz.olhaAlt + 1, dz.az, 45));
+
+  /* --- olhando pra cima, pronto pra subir --- */
+  W.push(noChao(A(0.398), 58, 180, 60));
+  W.push(noChao(A(0.428), 64, 180, 62));
+
+  /* --- subindo, subindo, até o espaço --- */
+  W.push(olhando(A(0.444), alto(3),   66, 180, 64));
+  W.push(olhando(A(0.458), alto(18),  68, 180, 66));
+  W.push(olhando(A(0.472), alto(70),  68, 180, 66));
+  W.push(olhando(A(0.486), alto(170), 66, 180, 64));
+  W.push(olhando(A(0.500), alto(300), 60, 180, 62));
+  W.push(olhando(A(0.512), P_BAIXO,   45, 180, 62));
+
+  /* --- virando pelo leste e olhando pra baixo, com o norte pra cima --- */
+  W.push(olhando(A(0.524), P_BAIXO,  10, 120, 64));
+  W.push(olhando(A(0.536), P_BAIXO, -32,  60, 62));
+  W.push(olhando(A(0.548), P_BAIXO, -76,  15, 58));
+  W.push(olhando(A(0.572), P_BAIXO, -86,   0, 58));
+
+  /* --- afastando: a cidade, o estado, o brasil, o planeta inteiro --- */
+  [0.472, 0.486, 0.500].forEach(function(tz, k){
+    var a = ALT_BAIXO * Math.pow(ALT_GLOBO / ALT_BAIXO, (k + 1) / 4);
+    W.push(olhando(tz, alto(a), -87 - k * 0.6, 0, 59 + k * 2));
+  });
+  W.push(olhando(0.514, C_GLOBO, -89, 0, 64));
+  W.push(olhando(0.555, C_GLOBO, -89, 0, 62));
+
+  /* --- virando para o coração da via láctea --- */
+  W.push(olhando(0.565, C_GLOBO, -50, nucleo.az * 0.5, 62));
+  W.push(olhando(0.574, C_GLOBO, ALT_VOO - 19, nucleo.az * 0.85, 60));
+  W.push(olhando(0.582, C_GLOBO, ALT_VOO, nucleo.az, 58));
+  W.push(noVoo(0.589, 0, 0, 0, 120, 0, 0, 0, 58));
+
+  /* --- galeria das memórias, no espaço, com a via láctea atrás --- */
+  for (var k = 0; k <= 15; k++) {
+    var s = 12 + k * 44;
+    var lado = k % 2 ? 1 : -1;
+    W.push(noVoo(0.595 + k * 0.0145, s, 5 * lado, Math.sin(k * 1.3) * 2, s + 120, -7 * lado, 0, 3 * lado, 58));
+  }
+
+  /* --- parada: o coração se forma, na frente do centro da galáxia --- */
+  W.push(noVoo(0.822, S_ESTACAO,      0, 0, S_CORACAO, 0, 0, 0, FOV_CORACAO));
+  W.push(noVoo(0.850, S_ESTACAO + 5,  0, 0, S_CORACAO, 0, 0, 0, FOV_CORACAO));
+  W.push(noVoo(0.885, S_ESTACAO + 10, 0, 0, S_CORACAO, 0, 0, 0, FOV_CORACAO));
+  W.push(noVoo(VOLTA[0][0], S_ESTACAO + 13, 0, 0, S_CORACAO, 0, 0, 0, FOV_CORACAO));
+
+  /* --- de volta pra casa, com o coração vindo junto até ficar no céu --- */
+  var ultimo = pontoDoVoo(S_ESTACAO + 13, 0, 0);
+  VOLTA.slice(1, -1).forEach(function(q){
+    W.push({ t: q[0], p: ultimo.clone().lerp(ORIGEM, q[1]), l: posicaoCoracao(q[0]), r: 0, f: lerp(59, 62, q[1]) });
+  });
+  W.push(noChao(VOLTA[VOLTA.length - 1][0], dirCoracao.alt - 13.5, dirCoracao.az, 62));
+  W.push(noChao(1.000, dirCoracao.alt - 13, dirCoracao.az, 62));
+
+  // todo ponto de mira na mesma distância: misturar mira perto e longe faz a curva olhar pra trás
+  W.forEach(function(w){ w.l = w.p.clone().addScaledVector(w.l.clone().sub(w.p).normalize(), LONGE); });
+
+  WP = W;
+  curvaPos = new THREE.CatmullRomCurve3(W.map(function(w){ return w.p; }), false, 'catmullrom', 0.4);
+  curvaOlha = new THREE.CatmullRomCurve3(W.map(function(w){ return w.l; }), false, 'catmullrom', 0.4);
+}
+
+function estadoNoT(t){
+  var n = WP.length;
+  var i = 0;
+  while (i < n - 2 && t > WP[i+1].t) i++;
+  var t0 = WP[i].t, t1 = WP[i+1].t;
+  var local = t1 > t0 ? (t - t0) / (t1 - t0) : 0;
+  local = clamp(local, 0, 1);
+  var e = lerp(local, suave(local), 0.55);
+  var u = (i + e) / (n - 1);
+  return {
+    u: clamp(u, 0, 1),
+    roll: lerp(WP[i].r, WP[i+1].r, e) * RAD,
+    fov: lerp(WP[i].f, WP[i+1].f, e)
+  };
+}
+
+/* ---- shaders ----
+   todo ponto de luz é um quadradinho de dois triângulos virado pra câmera
+   (e não gl_POINTS), porque tem placa de vídeo que desenha ponto errado */
+
+var BILLBOARD = [
+  'uniform vec2 uTela;',
+  'varying vec2 vCanto;',
+  'vec4 quadNaTela(vec3 centro, float tamPx){',
+  '  vec4 clip = projectionMatrix * modelViewMatrix * vec4(centro, 1.0);',
+  '  clip.xy += position.xy * (tamPx / uTela) * clip.w;',
+  '  vCanto = position.xy * 0.5;',
+  '  return clip;',
+  '}'
+].join('\n');
+
+var BRILHO_PONTO = [
+  'float brilhoPonto(vec2 c){',
+  '  float r2 = dot(c, c) * 4.0;',
+  '  return exp(-r2 * 6.0) + exp(-r2 * 2.2) * 0.22;',
+  '}'
+].join('\n');
+
+// estrelas do céu: tamanho fixo em pixels, como estrelas de verdade (estão no infinito)
+var vsEstrela = [
+  'attribute vec3 centro;',
+  'attribute float aMag;',
+  'attribute vec3 aColor;',
+  'attribute float aPhase;',
+  'uniform float uMagLimite;',
+  'uniform float uPx;',
+  'uniform float uZoom;',
+  'uniform float uTime;',
+  'uniform float uCintila;',
+  'uniform float uOpacity;',
+  'uniform float uAtmosfera;',
+  'varying vec3 vColor;',
+  'varying float vA;',
+  BILLBOARD,
+  'void main(){',
+  '  vec3 d = normalize(centro);',
+  '  float p = pow(pow(10.0, -0.4 * aMag), 0.35);',
+  '  float vis = 1.0 - smoothstep(uMagLimite - 0.5, uMagLimite + 0.5, aMag);',
+  '  float horiz = mix(1.0, smoothstep(-0.004, 0.012, d.y), uAtmosfera);',
+  '  float ext = mix(1.0, 0.4 + 0.6 * smoothstep(0.0, 0.32, d.y), uAtmosfera);',
+  '  float tw = 1.0 - uCintila * (0.5 + 0.5 * sin(uTime * (1.4 + fract(aPhase * 7.13) * 2.4) + aPhase));',
+  '  vA = vis * horiz * ext * tw * uOpacity * clamp(0.3 + 0.95 * p, 0.0, 1.0);',
+  '  vColor = aColor;',
+  '  if (vA < 0.003) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }',
+  '  gl_Position = quadNaTela(centro, (2.1 + 6.4 * p) * uPx * uZoom);',
+  '}'
+].join('\n');
+
+var fsEstrela = [
+  'varying vec3 vColor;',
+  'varying float vA;',
+  'varying vec2 vCanto;',
+  BRILHO_PONTO,
+  'void main(){',
+  '  float a = brilhoPonto(vCanto) * vA;',
+  '  if (a < 0.004) discard;',
+  '  gl_FragColor = vec4(vColor, a);',
+  '}'
+].join('\n');
+
+// poeira do voo: diminui com a distância
+var vsPoeira = [
+  'attribute vec3 centro;',
+  'attribute float aSize;',
+  'attribute float aPhase;',
+  'attribute vec3 aColor;',
+  'varying float vTw;',
+  'varying vec3 vColor;',
+  'varying float vDist;',
+  'uniform float uTime;',
+  'uniform float uOpacity;',
+  BILLBOARD,
+  'void main(){',
+  '  vColor = aColor;',
+  '  vTw = 0.45 + 0.55 * sin(uTime * 1.1 + aPhase);',
+  '  vec4 mv = modelViewMatrix * vec4(centro, 1.0);',
+  '  vDist = -mv.z;',
+  '  if (uOpacity < 0.002 || vDist < 0.5) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }',
+  '  gl_Position = quadNaTela(centro, aSize * (320.0 / max(vDist, 1.0)));',
+  '}'
+].join('\n');
+
+var fsPoeira = [
+  'varying float vTw;',
+  'varying vec3 vColor;',
+  'varying float vDist;',
+  'varying vec2 vCanto;',
+  'uniform float uFog;',
+  'uniform float uOpacity;',
+  'void main(){',
+  '  float d = length(vCanto);',
+  '  float a = 1.0 - smoothstep(0.02, 0.5, d);',
+  '  a = pow(a, 1.7);',
+  '  float f = exp(-pow(uFog * vDist, 2.0));',
+  '  gl_FragColor = vec4(vColor, a * vTw * f * uOpacity);',
+  '}'
+].join('\n');
+
+// luzes da cidade: se apagam uma a uma
+var vsLuzes = [
+  'attribute vec3 centro;',
+  'attribute float aSize;',
+  'attribute float aPhase;',
+  'attribute float aLimiar;',
+  'attribute vec3 aColor;',
+  'uniform float uApagar;',
+  'uniform float uPx;',
+  'uniform float uTime;',
+  'uniform float uOpacity;',
+  'varying vec3 vColor;',
+  'varying float vA;',
+  BILLBOARD,
+  'void main(){',
+  '  float acesa = 1.0 - smoothstep(aLimiar - 0.05, aLimiar, uApagar);',
+  '  vA = acesa * uOpacity * (0.8 + 0.2 * sin(uTime * 0.8 + aPhase));',
+  '  vColor = aColor;',
+  '  if (vA < 0.003) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }',
+  '  gl_Position = quadNaTela(centro, aSize * uPx);',
+  '}'
+].join('\n');
+
+// estrelas do nosso coração: nunca ficam menores que um pontinho de luz
+var vsCoracao = [
+  'attribute vec3 centro;',
+  'attribute float aSize;',
+  'attribute float aAlpha;',
+  'attribute float aPhase;',
+  'uniform float uEscalaTela;',
+  'uniform float uPx;',
+  'uniform float uTime;',
+  'varying float vA;',
+  BILLBOARD,
+  'void main(){',
+  '  vA = aAlpha * (0.82 + 0.18 * sin(uTime * 2.1 + aPhase));',
+  '  if (vA < 0.003) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }',
+  '  vec4 mv = modelViewMatrix * vec4(centro, 1.0);',
+  '  float dist = max(-mv.z, 1.0);',
+  '  gl_Position = quadNaTela(centro, max(aSize * uEscalaTela / dist, 3.4 * uPx));',
+  '}'
+].join('\n');
+
+var fsCoracao = [
+  'uniform vec3 uCor;',
+  'varying float vA;',
+  'varying vec2 vCanto;',
+  'void main(){',
+  '  float r2 = dot(vCanto, vCanto) * 4.0;',
+  '  float nucleo = exp(-r2 * 7.0);',
+  '  float a = (nucleo + exp(-r2 * 2.0) * 0.35) * vA;',
+  '  if (a < 0.004) discard;',
+  '  gl_FragColor = vec4(mix(uCor, vec3(1.0), nucleo * 0.6), a);',
+  '}'
+].join('\n');
+
+// faixas de luz desenhadas aos poucos (linhas das constelações)
+var vsFaixa = [
+  'attribute float aLado;',
+  'attribute float aAvanco;',
+  'attribute float aSeg;',
+  'varying float vLado;',
+  'varying float vAvanco;',
+  'varying float vSeg;',
+  'void main(){',
+  '  vLado = aLado; vAvanco = aAvanco; vSeg = aSeg;',
+  '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+  '}'
+].join('\n');
+
+var fsFaixa = [
+  'uniform float uDesenho;',
+  'uniform float uNSeg;',
+  'uniform vec3 uCor;',
+  'uniform float uOpacity;',
+  'varying float vLado;',
+  'varying float vAvanco;',
+  'varying float vSeg;',
+  'void main(){',
+  '  float feito = clamp(uDesenho * uNSeg - vSeg, 0.0, 1.0);',
+  '  if (vAvanco > feito) discard;',
+  '  float a = 1.0 - abs(vLado);',
+  '  a = a * a;',
+  '  gl_FragColor = vec4(uCor, a * uOpacity);',
+  '}'
+].join('\n');
+
+// o céu em volta: escuro no alto, com o brilho rosado da cidade no horizonte
+var vsDomo = [
+  'varying vec3 vDir;',
+  'void main(){',
+  '  vDir = position;',
+  '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+  '}'
+].join('\n');
+
+var fsDomo = [
+  'uniform float uPoluicao;',
+  'uniform float uEspaco;',
+  'varying vec3 vDir;',
+  'void main(){',
+  '  vec3 d = normalize(vDir);',
+  '  float h = d.y;',
+  '  float az = atan(d.x, -d.z);',
+  '  float sul = exp(-pow((3.14159265 - abs(az)) / 1.1, 2.0));',
+  '  vec3 zenite = vec3(0.020, 0.014, 0.044);',
+  '  vec3 meio = vec3(0.055, 0.030, 0.078);',
+  '  vec3 cor = mix(meio, zenite, smoothstep(0.0, 0.75, h));',
+  '  float hh = max(h, 0.0);',
+  '  float brilho = exp(-hh * 8.0) * (0.55 + 0.45 * sul);',
+  '  vec3 cidade = vec3(0.44, 0.17, 0.25);',
+  '  vec3 limpo = vec3(0.12, 0.055, 0.11);',
+  '  cor += mix(limpo, cidade, uPoluicao) * brilho;',
+  '  cor += vec3(0.05, 0.022, 0.04) * uPoluicao * (1.0 - smoothstep(0.0, 0.9, h));',
+  '  vec3 espaco = vec3(0.004, 0.003, 0.010);',
+  '  cor = mix(cor, espaco, uEspaco);',
+  '  gl_FragColor = vec4(cor, 1.0);',
+  '}'
+].join('\n');
+
+/* ---- via láctea: calculada uma vez na placa de vídeo, em coordenadas galácticas ---- */
+var CODIGO_VL = [
+  'float hash3(vec3 p){ p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }',
+  'float ruido(vec3 x){',
+  '  vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);',
+  '  return mix(mix(mix(hash3(i), hash3(i + vec3(1,0,0)), f.x), mix(hash3(i + vec3(0,1,0)), hash3(i + vec3(1,1,0)), f.x), f.y),',
+  '             mix(mix(hash3(i + vec3(0,0,1)), hash3(i + vec3(1,0,1)), f.x), mix(hash3(i + vec3(0,1,1)), hash3(i + vec3(1,1,1)), f.x), f.y), f.z);',
+  '}',
+  'float fbm4(vec3 p){ float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++){ v += a * ruido(p); p = p * 2.03 + 11.7; a *= 0.5; } return v / 0.9375; }',
+  'float fbm6(vec3 p){ float v = 0.0; float a = 0.5; for (int i = 0; i < 6; i++){ v += a * ruido(p); p = p * 2.03 + 11.7; a *= 0.5; } return v / 0.984; }',
+  'float difL(float l, float l0){ return mod(l - l0 + 540.0, 360.0) - 180.0; }',
+  'float mancha(float l, float b, float l0, float b0, float r){ vec2 d = vec2(difL(l, l0), b - b0); return exp(-dot(d, d) / (r * r)); }',
+  'vec4 viaLactea(vec3 g, float l, float b){',
+  '  float dc = difL(l, 0.0);',
+  '  float centro = exp(-pow(dc / 34.0, 2.0));',
+  '  float bojo = mancha(l, b, 0.0, -1.5, 10.0);',
+  '  float largura = 3.2 + 4.4 * exp(-pow(dc / 30.0, 2.0));',
+  '  vec3 w = g * 6.0;',
+  '  vec3 q = vec3(fbm4(w), fbm4(w + vec3(5.2, 1.3, 2.8)), fbm4(w + vec3(9.7, 4.1, 7.3)));',
+  '  float n1 = fbm6(g * 11.0 + q * 1.8);',
+  '  float n2 = fbm6(g * 21.0 + q * 2.6 + 3.3);',
+  '  float bb = b + (q.x - 0.5) * 3.0;',
+  '  float banda = exp(-pow(bb / largura, 2.0));',
+  '  float halo = exp(-pow(b / (largura * 3.2), 2.0));',
+  '  float lon = 0.30 + 0.70 * centro + 0.38 * mancha(l, b, 287.0, -0.8, 11.0) + 0.22 * mancha(l, b, 330.0, 0.0, 14.0)',
+  '            + 0.26 * mancha(l, b, 76.0, 1.0, 16.0) + 0.16 * mancha(l, b, 260.0, -1.0, 18.0);',
+  '  float nuvens = 0.18 + 1.7 * pow(n1, 2.4);',
+  '  float B = banda * nuvens * lon + halo * 0.10 * lon * (0.6 + n1) + bojo * (0.35 + 0.9 * pow(n1, 1.5));',
+  '  float rg = 1.0 - abs(fbm6(g * 22.0 + q * 3.0 + 7.1) * 2.0 - 1.0);',
+  '  float fil = smoothstep(0.86, 0.985, rg) * smoothstep(0.44, 0.62, n2) * exp(-pow((b - 0.3 - (q.y - 0.5) * 5.0) / (1.5 + 2.2 * centro), 2.0));',
+  '  float fenda = smoothstep(0.52, 0.70, n2) * exp(-pow((b - 1.4) / 1.7, 2.0)) * smoothstep(-15.0, 0.0, dc) * (1.0 - smoothstep(30.0, 60.0, dc));',
+  '  B *= 1.0 - 0.62 * clamp(fil + fenda * 0.55, 0.0, 1.0);',
+  '  B *= 1.0 - 0.86 * mancha(l, b, 301.0, -1.0, 3.1);',
+  '  B *= 1.0 - smoothstep(24.0, 32.0, abs(b));',
+  '  vec3 frio = vec3(0.64, 0.66, 1.0);',
+  '  vec3 quente = vec3(1.0, 0.86, 0.72);',
+  '  vec3 cor = mix(frio, quente, clamp(centro * 0.85 + bojo * 0.8 + (n1 - 0.5) * 0.4, 0.0, 1.0));',
+  '  float neb = mancha(l, b, 287.6, -0.6, 1.6) + mancha(l, b, 6.0, -1.2, 1.1) + 0.8 * mancha(l, b, 15.5, -0.5, 1.2)',
+  '            + 0.7 * mancha(l, b, 351.2, 0.7, 1.0) + 0.5 * mancha(l, b, 294.8, -1.7, 0.9) + 0.4 * mancha(l, b, 17.0, 0.8, 0.9)',
+  '            + 0.25 * mancha(l, b, 263.0, -2.0, 8.0);',
+  '  neb *= 0.5 + n1;',
+  '  cor = mix(cor, vec3(1.0, 0.50, 0.68), clamp(neb, 0.0, 0.4));',
+  '  B += neb * 0.28;',
+  '  return vec4(cor, B);',
+  '}'
+].join('\n');
+
+var BMAX_VL = 32;
+
+var fsAssarVL = [
+  'uniform float uBMax;',
+  'varying vec2 vUv;',
+  CODIGO_VL,
+  'void main(){',
+  '  float l = vUv.x * 360.0;',
+  '  float b = -uBMax + vUv.y * 2.0 * uBMax;',
+  '  float lr = radians(l), br = radians(b);',
+  '  vec3 g = vec3(cos(br) * cos(lr), cos(br) * sin(lr), sin(br));',
+  '  vec4 v = viaLactea(g, l, b);',
+  '  gl_FragColor = vec4(clamp(v.rgb * v.a * 0.30, 0.0, 1.0), 1.0);',
+  '}'
+].join('\n');
+
+var vsViaLactea = [
+  'varying vec2 vUv;',
+  'void main(){',
+  '  vUv = uv;',
+  '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+  '}'
+].join('\n');
+
+var fsViaLactea = [
+  'uniform sampler2D uMapa;',
+  'uniform float uOpacity;',
+  'varying vec2 vUv;',
+  'float pontilhado(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }',
+  'void main(){',
+  '  vec3 c = texture2D(uMapa, vUv).rgb * uOpacity;',
+  '  c += (pontilhado(gl_FragCoord.xy) - 0.5) / 255.0;',
+  '  gl_FragColor = vec4(max(c, 0.0), 1.0);',
+  '}'
+].join('\n');
+
+// a terra de noite: costa, lagoas e as luzes das cidades
+var vsTerra = [
+  'varying vec3 vN;',
+  'void main(){',
+  '  vN = position;',
+  '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+  '}'
+].join('\n');
+
+var fsTerra = [
+  'uniform sampler2D uMapa;',
+  'uniform sampler2D uDia;',
+  'uniform sampler2D uNoite;',
+  'uniform float uTemTex;',
+  'uniform float uMapaKm;',
+  'uniform float uRT;',
+  'uniform float uLuz;',
+  'uniform float uAltura;',
+  'uniform float uLon0;',
+  'uniform vec3 uE;',
+  'uniform vec3 uU;',
+  'uniform vec3 uN;',
+  'uniform vec3 uSol;',
+  'varying vec3 vN;',
+  'void main(){',
+  '  vec3 n = normalize(vN);',
+  // o mapa detalhado, de perto de casa
+  '  float s = length(n.xz);',
+  '  float th = n.y > 0.0 ? asin(clamp(s, 0.0, 1.0)) : 3.14159265 - asin(clamp(s, 0.0, 1.0));',
+  '  vec2 dir = s > 1e-7 ? n.xz / s : vec2(0.0);',
+  '  vec2 km = dir * th * uRT;',
+  '  vec2 uvl = vec2(km.x / uMapaKm + 0.5, 0.5 - km.y / uMapaKm);',
+  '  float dentro = step(0.0, uvl.x) * step(uvl.x, 1.0) * step(0.0, uvl.y) * step(uvl.y, 1.0);',
+  '  vec3 local = texture2D(uMapa, clamp(uvl, 0.0, 1.0)).rgb;',
+  '  local = local * local * 1.1 + local * 0.3;',
+  // o planeta de verdade: latitude e longitude de cada ponto
+  '  vec3 ecef = uE * n.x + uU * n.y - uN * n.z;',
+  '  float lat = asin(clamp(ecef.z, -1.0, 1.0));',
+  '  float c0 = cos(uLon0), s0 = sin(uLon0);',
+  '  float lonRel = atan(-ecef.x * s0 + ecef.y * c0, ecef.x * c0 + ecef.y * s0);',   // a costura fica do outro lado do mundo
+  '  vec2 uvg = vec2((lonRel + uLon0) / 6.28318530 + 0.5, lat / 3.14159265 + 0.5);',
+  '  vec3 dia = texture2D(uDia, uvg).rgb;',
+  '  vec3 noite = texture2D(uNoite, uvg).rgb;',
+  '  float sol = dot(n, uSol);',
+  '  float claro = smoothstep(-0.10, 0.12, sol);',
+  '  vec3 corDia = dia * (0.10 + 1.05 * max(sol, 0.0));',
+  '  vec3 luzes = pow(noite, vec3(1.35)) * vec3(1.35, 1.02, 0.66) * 2.1;',
+  '  vec3 corNoite = dia * vec3(0.018, 0.022, 0.036) + luzes;',
+  '  vec3 global = mix(corNoite, corDia, claro);',
+  '  float borda = 1.0 - smoothstep(550.0, 950.0, max(abs(km.x), abs(km.y)));',
+  '  float perto = borda * (1.0 - smoothstep(600.0, 1900.0, uAltura));',
+  '  vec3 semTextura = mix(vec3(0.014, 0.014, 0.024), local, dentro);',
+  '  vec3 cor = uTemTex > 0.5 ? mix(global, local, perto) : semTextura;',
+  '  gl_FragColor = vec4(cor * uLuz, 1.0);',
+  '}'
+].join('\n');
+
+// a camadinha de ar em volta da terra: azul onde bate sol; de noite, a linha verde do brilho do céu e o rosado embaixo
+var vsAtmosfera = [
+  'varying vec3 vPosMundo;',
+  'void main(){',
+  '  vec4 w = modelMatrix * vec4(position, 1.0);',
+  '  vPosMundo = w.xyz;',
+  '  gl_Position = projectionMatrix * viewMatrix * w;',
+  '}'
+].join('\n');
+
+var fsAtmosfera = [
+  'uniform vec3 uCentro;',
+  'uniform float uRT;',
+  'uniform float uOpacity;',
+  'uniform vec3 uSol;',
+  'varying vec3 vPosMundo;',
+  'void main(){',
+  '  vec3 dir = normalize(vPosMundo - cameraPosition);',
+  '  vec3 oc = uCentro - cameraPosition;',
+  '  float tc = dot(oc, dir);',
+  '  vec3 cor = vec3(0.0);',
+  '  if (tc > 0.0) {',
+  '    vec3 ponto = cameraPosition + dir * tc;',
+  '    float dmin = length(ponto - uCentro);',
+  '    float sol = dot(normalize(ponto - uCentro), uSol);',
+  '    float claro = smoothstep(-0.22, 0.18, sol);',
+  '    float alt = dmin - uRT;',
+  '    vec3 noite, dia;',
+  '    if (alt > 0.0) {',
+  '      float verde = exp(-pow((alt - 92.0) / 8.0, 2.0));',
+  '      float rosa = exp(-pow((alt - 38.0) / 24.0, 2.0));',
+  '      float base = exp(-alt / 20.0);',
+  '      noite = vec3(0.30, 0.95, 0.62) * verde * 0.50 + vec3(1.0, 0.40, 0.70) * rosa * 0.34 + vec3(0.42, 0.46, 1.0) * base * 0.55;',
+  '      dia = vec3(0.36, 0.62, 1.0) * exp(-alt / 26.0) * 1.5 + vec3(1.0, 0.55, 0.42) * exp(-pow((alt - 8.0) / 10.0, 2.0)) * (1.0 - smoothstep(0.0, 0.3, sol)) * 0.9;',
+  '    } else {',
+  '      float k = exp(alt / 110.0);',
+  '      noite = (vec3(0.42, 0.46, 1.0) * 0.30 + vec3(1.0, 0.40, 0.70) * 0.10) * k;',
+  '      dia = vec3(0.32, 0.52, 1.0) * 0.40 * k;',
+  '    }',
+  '    cor = mix(noite, dia, claro);',
+  '  }',
+  '  gl_FragColor = vec4(cor * uOpacity, 1.0);',
+  '}'
+].join('\n');
+
+function registrarTela(mat){ materiaisTela.push(mat); return mat; }
+
+function materialEstrelas(){
+  return registrarTela(new THREE.ShaderMaterial({
+    uniforms: {
+      uMagLimite: { value: 2.7 }, uPx: { value: 1 }, uZoom: { value: 1 }, uTime: { value: 0 },
+      uCintila: { value: 0.2 }, uOpacity: { value: 1 }, uAtmosfera: { value: 1 }, uTela: { value: new THREE.Vector2(1, 1) }
+    },
+    vertexShader: vsEstrela, fragmentShader: fsEstrela,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+}
+
+/* muitos quadradinhos de uma vez: cada instância é uma luz */
+function geometriaQuads(centros, extras, dinamico){
+  var g = new THREE.InstancedBufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([-1, -1, 0, 1, -1, 0, 1, 1, 0, -1, 1, 0], 3));
+  g.setIndex([0, 1, 2, 0, 2, 3]);
+  var c = new THREE.InstancedBufferAttribute(centros instanceof Float32Array ? centros : new Float32Array(centros), 3);
+  if (dinamico) c.setUsage(THREE.DynamicDrawUsage);
+  g.setAttribute('centro', c);
+  Object.keys(extras).forEach(function(nome){
+    var e = extras[nome];
+    var a = new THREE.InstancedBufferAttribute(e.dados instanceof Float32Array ? e.dados : new Float32Array(e.dados), e.tam);
+    if (dinamico) a.setUsage(THREE.DynamicDrawUsage);
+    g.setAttribute(nome, a);
+  });
+  g.instanceCount = c.count;
+  return g;
+}
+function malhaQuads(geo, mat){
+  var m = new THREE.Mesh(geo, mat);
+  m.frustumCulled = false;
+  return m;
+}
+
+function nuvemPoeira(centros, cores, tamanhos, opacidade, fog){
+  var fases = [];
+  for (var i = 0; i < tamanhos.length; i++) fases.push(Math.random() * Math.PI * 2);
+  var g = geometriaQuads(centros, {
+    aColor: { dados: cores, tam: 3 }, aSize: { dados: tamanhos, tam: 1 }, aPhase: { dados: fases, tam: 1 }
+  });
+  var m = registrarTela(new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uFog: { value: fog === undefined ? 0.0042 : fog },
+      uOpacity: { value: opacidade === undefined ? 1 : opacidade },
+      uTela: { value: new THREE.Vector2(1, 1) }
+    },
+    vertexShader: vsPoeira, fragmentShader: fsPoeira,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  return malhaQuads(g, m);
+}
+
+/* depois que a textura sobe pra placa de vídeo, o canvas não precisa mais ocupar memória (no iPhone isso conta) */
+function soltarDepoisDeEnviar(tex){
+  tex.onUpdate = function(){
+    var im = tex.image;
+    if (im && im.getContext) { im.width = 1; im.height = 1; }
+    tex.onUpdate = null;
+  };
+  return tex;
+}
+
+function planoComTextura(info, larguraMundo){
+  var tex = soltarDepoisDeEnviar(new THREE.CanvasTexture(info.canvas));
+  tex.minFilter = THREE.LinearFilter;
+  tex.magFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+  if (renderer && renderer.capabilities.getMaxAnisotropy) tex.anisotropy = renderer.capabilities.getMaxAnisotropy();
+  var alturaMundo = larguraMundo * (info.h / info.w);
+  var geo = new THREE.PlaneGeometry(larguraMundo, alturaMundo);
+  var mat = new THREE.MeshBasicMaterial({
+    map: tex, transparent: true, depthWrite: false, opacity: 0, side: THREE.DoubleSide, fog: false
+  });
+  return new THREE.Mesh(geo, mat);
+}
+
+/* faixa luminosa , cada par [A, B] vira um segmento que pode ser desenhado aos poucos */
+function faixaLuminosa(pares, largura, perpendicular, cor, folga){
+  var pos = [], lado = [], avanco = [], seg = [], idx = [];
+  pares.forEach(function(par, k){
+    var A = par[0].clone(), B = par[1].clone();
+    var dir = B.clone().sub(A);
+    var comp = dir.length();
+    dir.normalize();
+    var f = Math.min(folga || 0, comp * 0.3);
+    A.addScaledVector(dir, f);
+    B.addScaledVector(dir, -f);
+    var n = perpendicular(A, B).multiplyScalar(largura);
+    var base = pos.length / 3;
+    [[A, 1, 0], [A, -1, 0], [B, 1, 1], [B, -1, 1]].forEach(function(q){
+      var P = q[0].clone().addScaledVector(n, q[1]);
+      pos.push(P.x, P.y, P.z);
+      lado.push(q[1]); avanco.push(q[2]); seg.push(k);
+    });
+    idx.push(base, base + 1, base + 2, base + 1, base + 3, base + 2);
+  });
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('aLado', new THREE.Float32BufferAttribute(lado, 1));
+  g.setAttribute('aAvanco', new THREE.Float32BufferAttribute(avanco, 1));
+  g.setAttribute('aSeg', new THREE.Float32BufferAttribute(seg, 1));
+  g.setIndex(idx);
+  var m = new THREE.ShaderMaterial({
+    uniforms: {
+      uDesenho: { value: 0 }, uNSeg: { value: pares.length },
+      uCor: { value: new THREE.Color(cor) }, uOpacity: { value: 0 }
+    },
+    vertexShader: vsFaixa, fragmentShader: fsFaixa,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+  });
+  return new THREE.Mesh(g, m);
+}
+
+/* cores dos materiais prontos do three vêm em linear; os shaders próprios já escrevem a cor final */
+function corReal(hex){
+  var c = new THREE.Color(hex);
+  return c.convertSRGBToLinear ? c.convertSRGBToLinear() : c;
+}
+function perpendicularNoCeu(A, B){ return new THREE.Vector3().crossVectors(A, B.clone().sub(A)).normalize(); }
+
+function iniciar3D(){
+  prepararVetores();
+
+  var canvas = document.getElementById('cena');
+  renderer = new THREE.WebGLRenderer({ canvas:canvas, antialias:true, powerPreference:'high-performance', preserveDrawingBuffer: MODO_TESTE });
+  if (!renderer.capabilities.isWebGL2 && !renderer.extensions.get('ANGLE_instanced_arrays')) throw new Error('sem instanciamento');
+  renderer.setPixelRatio(MODO_TESTE ? 1 : Math.min(window.devicePixelRatio || 1, 2));
+  var tam0 = tamanhoDaCena();
+  renderer.setSize(tam0.w, tam0.h, false);
+  renderer.setClearColor(0x07050d, 1);
+  if (THREE.sRGBEncoding !== undefined) renderer.outputEncoding = THREE.sRGBEncoding;
+
+  scene = new THREE.Scene();
+  camera = new THREE.PerspectiveCamera(60, tam0.w / tam0.h, 0.3, rc(1200));
+
+  // se o iPhone apertar a memória e derrubar o 3D, recarrega em vez de ficar tela preta
+  canvas.addEventListener('webglcontextlost', function(e){ e.preventDefault(); }, false);
+  canvas.addEventListener('webglcontextrestored', function(){ window.location.reload(); }, false);
+  scene.add(camera);
+
+  construirTrajeto();
+
+  grupoCeu = new THREE.Group();
+  scene.add(grupoCeu);
+  criarDomo();
+  criarViaLactea();
+  criarEstrelasReais();
+  criarNuvensMagalhaes();
+  criarLua();
+  criarLinhasConstelacoes();
+  criarDestaquesDoCeu();
+  criarRotulosLivres();
+
+  criarChaoECidade();
+  criarTerra();
+  criarPoeira();
+  criarTextos();
+  criarMemorias();
+  criarCoracao();
+
+  relogio = new THREE.Clock();
+  window.addEventListener('resize', aoRedimensionar);
+  aoRedimensionar();
+  pronto = true;
+}
+
+/* ---- o domo do céu ---- */
+function criarDomo(){
+  domo = new THREE.Mesh(
+    new THREE.SphereGeometry(rc(980), 48, 32),
+    new THREE.ShaderMaterial({
+      uniforms: { uPoluicao: { value: 1 }, uEspaco: { value: 0 } },
+      vertexShader: vsDomo, fragmentShader: fsDomo,
+      side: THREE.BackSide, depthWrite: false
+    })
+  );
+  domo.renderOrder = -10;
+  grupoCeu.add(domo);
+}
+
+/* ---- as estrelas de verdade ---- */
+var PLANETAS = [
+  { id:'mercurio', nome:'Mercúrio', mag: -0.3, cor:[1.0, 0.92, 0.84] },
+  { id:'venus',    nome:'Vênus',    mag: -3.9, cor:[1.0, 0.97, 0.90] },
+  { id:'marte',    nome:'Marte',    mag:  1.2, cor:[1.0, 0.62, 0.45] },
+  { id:'jupiter',  nome:'Júpiter',  mag: -2.0, cor:[1.0, 0.94, 0.84] },
+  { id:'saturno',  nome:'Saturno',  mag:  1.0, cor:[1.0, 0.90, 0.72] }
+];
+
+function criarEstrelasReais(){
+  var pos = [], cor = [], mag = [], fase = [];
+  for (var i = 0; i < ESTRELAS.length; i += 4) {
+    var h = ceu.daJ2000(ESTRELAS[i], ESTRELAS[i + 1]);
+    var v = vetor3(h.alt, h.az, R_CEU);
+    pos.push(v.x, v.y, v.z);
+    var c = ASTRO.corDaEstrela(ESTRELAS[i + 3]);
+    cor.push(lerp(c[0], 1.0, 0.16), lerp(c[1], 0.93, 0.16), lerp(c[2], 0.97, 0.16));
+    mag.push(ESTRELAS[i + 2]);
+    fase.push(Math.random() * 100);
+  }
+  PLANETAS.forEach(function(p){
+    var h = ceu.planetas[p.id];
+    var v = vetor3(h.alt, h.az, R_CEU);
+    pos.push(v.x, v.y, v.z);
+    cor.push(p.cor[0], p.cor[1], p.cor[2]);
+    mag.push(p.mag);
+    fase.push(Math.random() * 100);
+  });
+  var g = geometriaQuads(pos, { aColor:{ dados:cor, tam:3 }, aMag:{ dados:mag, tam:1 }, aPhase:{ dados:fase, tam:1 } });
+  estrelasReais = malhaQuads(g, materialEstrelas());
+  estrelasReais.renderOrder = -4;
+  grupoCeu.add(estrelasReais);
+}
+
+/* ---- via láctea ---- */
+function assarViaLactea(){
+  var LW = celular ? 2048 : 4096, LH = celular ? 512 : 1024;
+  var alvo = new THREE.WebGLRenderTarget(LW, LH, {
+    minFilter: THREE.LinearFilter, magFilter: THREE.LinearFilter, generateMipmaps: false,
+    depthBuffer: false, stencilBuffer: false, wrapS: THREE.RepeatWrapping
+  });
+  var cenaAssar = new THREE.Scene();
+  var camAssar = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+  var quad = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
+    uniforms: { uBMax: { value: BMAX_VL } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: fsAssarVL, depthTest: false, depthWrite: false
+  }));
+  quad.frustumCulled = false;
+  cenaAssar.add(quad);
+  renderer.setRenderTarget(alvo);
+  renderer.render(cenaAssar, camAssar);
+  var pixels = new Uint8Array(LW * LH * 4);
+  renderer.readRenderTargetPixels(alvo, 0, 0, LW, LH, pixels);
+  renderer.setRenderTarget(null);
+  quad.geometry.dispose();
+  quad.material.dispose();
+  return { textura: alvo.texture, pixels: pixels, w: LW, h: LH };
+}
+
+function criarViaLactea(){
+  var assada = assarViaLactea();
+  texViaLactea = assada.textura;
+
+  var BMAX = BMAX_VL, NL = 180, NB = 32;
+  var pos = [], uv = [], idx = [];
+  for (var j = 0; j <= NB; j++) {
+    var bb = -BMAX + j / NB * 2 * BMAX;
+    for (var i = 0; i <= NL; i++) {
+      var ll = i / NL * 360;
+      var eq = ASTRO.galacticaParaJ2000(ll, bb);
+      var h = ceu.daJ2000(eq.ra, eq.dec);
+      var v = vetor3(h.alt, h.az, rc(920));
+      pos.push(v.x, v.y, v.z);
+      uv.push(i / NL, j / NB);
+    }
+  }
+  for (j = 0; j < NB; j++) {
+    for (i = 0; i < NL; i++) {
+      var a0 = j * (NL + 1) + i, a1 = a0 + 1, b0 = a0 + NL + 1, b1 = b0 + 1;
+      idx.push(a0, b0, a1, a1, b0, b1);
+    }
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  g.setIndex(idx);
+  viaLactea = new THREE.Mesh(g, new THREE.ShaderMaterial({
+    uniforms: { uMapa: { value: texViaLactea }, uOpacity: { value: 0 } },
+    vertexShader: vsViaLactea, fragmentShader: fsViaLactea,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+  }));
+  viaLactea.renderOrder = -6;
+  grupoCeu.add(viaLactea);
+
+  // milhares de estrelinhas que seguem as nuvens da via láctea (e somem nas faixas escuras)
+  var px = assada.pixels, W = assada.w, Hh = assada.h;
+  function brilhoEm(l, b){
+    var x = clamp(Math.floor(l / 360 * W), 0, W - 1);
+    var y = clamp(Math.floor((b + BMAX) / (2 * BMAX) * Hh), 0, Hh - 1);
+    var k = (y * W + x) * 4;
+    return (px[k] + px[k + 1] + px[k + 2]) / 765;
+  }
+  var total = celular ? 22000 : 40000;
+  var sorte = sorteio(7);
+  var p2 = [], cor = [], mag = [], fase = [];
+  var guarda = 0;
+  while (mag.length < total && guarda++ < total * 40) {
+    var l2 = sorte() * 360;
+    var b2 = (sorte() * 2 - 1) * BMAX;
+    var br = brilhoEm(l2, b2);
+    if (sorte() > Math.sqrt(clamp(br / 0.5, 0, 1)) * 0.7 + 0.004) continue;
+    var eq2 = ASTRO.galacticaParaJ2000(l2, b2);
+    var h2 = ceu.daJ2000(eq2.ra, eq2.dec);
+    var v2 = vetor3(h2.alt, h2.az, rc(910));
+    p2.push(v2.x, v2.y, v2.z);
+    var qual = sorte();
+    var tom = qual < 0.45 ? [1.0, 0.93, 0.86] : qual < 0.85 ? [0.92, 0.92, 1.0] : [1.0, 0.8, 0.72];
+    var luzinha = 0.75 + sorte() * 0.25;
+    cor.push(tom[0] * luzinha, tom[1] * luzinha, tom[2] * luzinha);
+    mag.push(6.2 + Math.pow(sorte(), 0.6) * 1.9);
+    fase.push(sorte() * 100);
+  }
+  var gp = geometriaQuads(p2, { aColor:{ dados:cor, tam:3 }, aMag:{ dados:mag, tam:1 }, aPhase:{ dados:fase, tam:1 } });
+  poeiraVL = malhaQuads(gp, materialEstrelas());
+  poeiraVL.renderOrder = -5;
+  grupoCeu.add(poeiraVL);
+}
+
+/* ---- as nuvens de magalhães (duas galáxias vizinhas, visíveis daqui) ---- */
+function criarNuvensMagalhaes(){
+  [
+    { ra: 80.894, dec: -69.756, larg: 150, alt: 118, nome: 'Grande Nuvem de Magalhães' },
+    { ra: 13.187, dec: -72.829, larg: 78,  alt: 52,  nome: 'Pequena Nuvem de Magalhães' }
+  ].forEach(function(n){
+    var h = ceu.daJ2000(n.ra, n.dec);
+    var c = novoCanvas(256, 256);
+    var ctx = c.getContext('2d');
+    ctx.translate(128, 128);
+    ctx.scale(1, n.alt / n.larg);
+    var g = ctx.createRadialGradient(0, 0, 0, 0, 0, 128);
+    g.addColorStop(0, 'rgba(225,210,255,0.5)');
+    g.addColorStop(0.4, 'rgba(200,180,240,0.18)');
+    g.addColorStop(1, 'rgba(200,180,240,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath(); ctx.arc(0, 0, 128, 0, Math.PI * 2); ctx.fill();
+    var mesh = planoComTextura({ canvas: c, w: 256, h: 256 }, rc(n.larg));
+    mesh.material.blending = THREE.AdditiveBlending;
+    mesh.position.copy(vetor3(h.alt, h.az, rc(915)));
+    mesh.lookAt(0, 0, 0);
+    mesh.rotateZ(0.6);
+    mesh.renderOrder = -5;
+    grupoCeu.add(mesh);
+    nuvensMagalhaes.push(mesh);
+    if (h.alt > 1) rotuloCeu(n.nome, h.alt - n.alt / 915 * GRAU * 0.62, h.az, { px: 40, alturaPx: 10, espaco: 5, cor: '#d9c8ef', brilho: 'rgba(170,140,220,0.6)', livre: 0.6 });
+  });
+}
+
+/* ---- a lua ---- */
+function criarLua(){
+  var l = ceu.lua;
+  var m = vetor3(l.alt, l.az, rc(850));
+  var mN = m.clone().normalize();
+  var s = vetor3(ceu.sol.alt, ceu.sol.az, 1);
+  var t = s.clone().addScaledVector(mN, -s.dot(mN)).normalize();
+
+  var tex = new THREE.CanvasTexture(texturaLua(l.fracao));
+  if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+  lua = new THREE.Mesh(
+    new THREE.PlaneGeometry(rc(22), rc(22)),
+    new THREE.MeshBasicMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 1, fog: false })
+  );
+  var z = mN.clone().negate();
+  var y = new THREE.Vector3().crossVectors(z, t);
+  lua.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(t, y, z));
+  lua.position.copy(m);
+  lua.renderOrder = -3;
+  grupoCeu.add(lua);
+
+  brilhoLua = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(texturaBrilho('rgba(255,236,226,ALPHA)')),
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0.22
+  }));
+  brilhoLua.position.copy(vetor3(l.alt, l.az, rc(848)));
+  brilhoLua.scale.set(rc(110), rc(110), 1);
+  brilhoLua.renderOrder = -3;
+  grupoCeu.add(brilhoLua);
+}
+
+/* ---- linhas das constelações ---- */
+function paresDaConstelacao(id, raio){
+  var pares = [];
+  (CONSTELACOES_LINHAS[id] || []).forEach(function(linha){
+    for (var i = 0; i < linha.length - 1; i++) {
+      var a = ceu.daJ2000(linha[i][0], linha[i][1]);
+      var b = ceu.daJ2000(linha[i + 1][0], linha[i + 1][1]);
+      pares.push([vetor3(a.alt, a.az, raio), vetor3(b.alt, b.az, raio), a, b]);
+    }
+  });
+  return pares;
+}
+
+function criarLinhasConstelacoes(){
+  var pos = [];
+  Object.keys(CONSTELACOES_LINHAS).forEach(function(id){
+    paresDaConstelacao(id, rc(895)).forEach(function(p){
+      if (p[2].alt < -3 && p[3].alt < -3) return;
+      pos.push(p[0].x, p[0].y, p[0].z, p[1].x, p[1].y, p[1].z);
+    });
+  });
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  linhasTodas = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+    color: corReal(0xc4a6e6), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  linhasTodas.renderOrder = -3;
+  grupoCeu.add(linhasTodas);
+  fadesJanela.push({ mat: linhasTodas.material, janela: null, max: 0, livre: 0.17 });
+}
+
+function criarDestaquesDoCeu(){
+  destaqueCruz = faixaLuminosa(paresDaConstelacao('Cru', rc(890)), rc(0.95), perpendicularNoCeu, 0xffc6dc, rc(7));
+  destaqueCruz.renderOrder = -2;
+  grupoCeu.add(destaqueCruz);
+  // baixinho, o nome vai em cima (embaixo ele ficaria atrás dos prédios)
+  rotuloCeu('Cruzeiro do Sul', cruzBaixo() ? cruz.alt + 4 : cruz.alt - 5.4, cruz.az, {
+    px: 50, alturaPx: 13, espaco: 7, cor: '#ffd3e4', janela: AJ([0.288, 0.298, 0.323, 0.333]), livre: 0.85
+  });
+
+  if (destaque) {
+    destaque.rotulos.forEach(function(r){
+      rotuloCeu(r.txt, r.alt, r.az, { px: 54, alturaPx: 13, italic: true, cor: '#fff1f6', janela: AJ([0.345, 0.356, 0.378, 0.387]), livre: 0.85 });
+    });
+    if (destaque.linhas) {
+      destaqueExtra = faixaLuminosa(paresDaConstelacao(destaque.linhas, rc(890)), rc(0.95), perpendicularNoCeu, 0xffc6dc, rc(5));
+      destaqueExtra.renderOrder = -2;
+      grupoCeu.add(destaqueExtra);
+    }
+  }
+}
+
+/* ---- rótulos no céu ---- */
+var R_ROTULO = rc(860);
+function rotuloCeu(txt, alt, az, estilo){
+  var info = texturaTexto({
+    txt: txt, px: estilo.px || 46, italic: estilo.italic, espaco: estilo.espaco,
+    cor: estilo.cor || '#fdeef4', brilho: estilo.brilho || 'rgba(255,159,197,0.55)', larg: 2000
+  });
+  var mesh = planoComTextura(info, 1);
+  mesh.position.copy(vetor3(alt, az, R_ROTULO));
+  mesh.lookAt(0, 0, 0);
+  mesh.renderOrder = -1;
+  mesh.userData.proporcaoPx = info.h / info.px;
+  mesh.userData.aspecto = info.w / info.h;
+  mesh.userData.alturaPx = estilo.alturaPx || 12;
+  grupoCeu.add(mesh);
+  rotulosCeu.push(mesh);
+  fadesJanela.push({ mat: mesh.material, janela: estilo.janela || null, max: estilo.max || 1, livre: estilo.livre || 0 });
+  return mesh;
+}
+
+function criarRotulosLivres(){
+  Object.keys(CONSTELACOES_NOMES).forEach(function(id){
+    var c = CONSTELACOES_NOMES[id];
+    if (id === 'Cru' || c[3] > 2) return;
+    var h = ceu.daJ2000(c[1], c[2]);
+    if (h.alt < 4) return;
+    rotuloCeu(c[0], h.alt, h.az, { px: 40, alturaPx: 10, espaco: 6, cor: '#d7c1ee', brilho: 'rgba(170,130,230,0.6)', livre: 0.55 });
+  });
+  ESTRELAS_NOMES.forEach(function(e){
+    var h = ceu.daJ2000(e[1], e[2]);
+    if (h.alt < 2 || separacao(h, cruz) < 6) return;   // o cruzeiro já tem o nome dele
+    rotuloCeu(e[0], h.alt - 1.5, h.az, { px: 44, alturaPx: 12, italic: true, cor: '#fff1f6', livre: 0.75 });
+  });
+  PLANETAS.forEach(function(p){
+    var h = ceu.planetas[p.id];
+    if (h.alt < 1 || (destaque && p.id === 'jupiter' && destaque.rotulos.length > 1)) return;
+    rotuloCeu(p.nome, h.alt + 2.2, h.az, { px: 46, alturaPx: 13, italic: true, cor: '#ffe9d6', livre: 0.8 });
+  });
+  if (ceu.lua.alt > 1 && !destaque) rotuloCeu('lua', ceu.lua.alt + 2.6, ceu.lua.az, { px: 46, alturaPx: 13, italic: true, livre: 0.8 });
+  if (nucleo.alt > 2) rotuloCeu('centro da Via Láctea', nucleo.alt - 3.2, nucleo.az, { px: 40, alturaPx: 10, espaco: 5, cor: '#ffe2c6', livre: 0.6 });
+  // o nome da nossa, no céu (a posição exata é acertada em aoRedimensionar)
+  rotuloNossa = rotuloCeu(INICIAIS, dirCoracao.alt - 6, dirCoracao.az, { px: 60, alturaPx: 17, italic: true, cor: '#ffe3ee', brilho: 'rgba(255,159,197,0.8)', livre: 0.95 });
+  [['norte', 0], ['leste', 90], ['sul', 180], ['oeste', 270]].forEach(function(p){
+    rotuloCeu(p[0], 3.2, p[1], { px: 44, alturaPx: 11, espaco: 9, cor: '#ff9fc5', livre: 0.9 });
+  });
+}
+
+/* ---- chão, silhueta da cidade e as luzes dela ---- */
+var PREDIOS = [];
+function prepararHorizonte(){
+  var sorte = sorteio(2005);
+  for (var i = 0; i < 120; i++) {
+    var arvore = sorte() < 0.45;
+    PREDIOS.push({
+      az: sorte() * 360,
+      larg: arvore ? 0.7 + sorte() * 1.4 : 0.3 + sorte() * 1.6,
+      alt: arvore ? 0.4 + sorte() * 0.9 : 0.3 + sorte() * (sorte() < 0.15 ? 2.6 : 1.3),
+      arvore: arvore
+    });
+  }
+}
+function perfilHorizonte(az){
+  var r = az * RAD;
+  var e = 0.95 + 0.45 * Math.sin(r * 2 + 0.7) + 0.30 * Math.sin(r * 5 + 2.1)
+        + 0.14 * Math.sin(r * 13 + 0.4) + 0.07 * Math.sin(r * 31 + 1.3);
+  e = Math.max(0.3, e);
+  for (var i = 0; i < PREDIOS.length; i++) {
+    var p = PREDIOS[i];
+    var d = Math.abs(difAz(az, p.az));
+    if (d > p.larg) continue;
+    var h = p.arvore ? e + p.alt * Math.sqrt(1 - Math.pow(d / p.larg, 2)) : e + p.alt;
+    if (h > e) e = h;
+  }
+  // deixa uma janelinha para o que estava baixinho no céu
+  [ceu.lua, ceu.planetas.jupiter].forEach(function(o){
+    if (o.alt > 0.5 && o.alt < 8) {
+      var d2 = Math.abs(difAz(az, o.az));
+      if (d2 < 7) e = Math.min(e, lerp(o.alt - 0.9, e, suave(d2 / 7)));
+    }
+  });
+  // e o cruzeiro baixinho não pode ficar atrás de um prédio
+  if (cruzBaixo()) {
+    var dc = Math.abs(difAz(az, cruz.az));
+    if (dc < 10) e = Math.min(e, lerp(Math.max(0.6, cruz.alt - 4.5), e, suave(dc / 10)));
+  }
+  return Math.max(0.1, e);
+}
+
+function criarChaoECidade(){
+  prepararHorizonte();
+
+  chao = new THREE.Mesh(
+    new THREE.CircleGeometry(1400, 64),
+    new THREE.MeshBasicMaterial({ color: corReal(0x030106), fog: false })
+  );
+  chao.rotation.x = -Math.PI / 2;
+  scene.add(chao);
+
+  var R = 520, N = 1440;
+  var pos = [], idx = [];
+  for (var i = 0; i <= N; i++) {
+    var az = i / N * 360;
+    var topo = OLHO + R * Math.tan(perfilHorizonte(az) * RAD);
+    var x = R * Math.sin(az * RAD), z = -R * Math.cos(az * RAD);
+    pos.push(x, -2, z, x, topo, z);
+  }
+  for (i = 0; i < N; i++) {
+    var a = i * 2;
+    idx.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+  }
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  g.setIndex(idx);
+  silhueta = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: corReal(0x050309), side: THREE.DoubleSide, fog: false }));
+  scene.add(silhueta);
+
+  // luzes da cidade, mais fortes para o sul (porto alegre fica pra lá)
+  var sorte = sorteio(51);
+  var total = celular ? 520 : 900;
+  var lp = [], lc = [], lt = [], lf = [], ll = [];
+  var guarda = 0;
+  while (lt.length < total && guarda++ < total * 10) {
+    var az2 = sorte() * 360;
+    var pesoSul = 0.35 + 0.65 * Math.exp(-Math.pow(difAz(az2, 185) / 55, 2));
+    if (sorte() > pesoSul) continue;
+    var topo2 = perfilHorizonte(az2);
+    var el = 0.05 + Math.pow(sorte(), 1.3) * Math.max(0.05, topo2 - 0.2);
+    var rr = 512 - sorte() * 4;
+    lp.push(rr * Math.sin(az2 * RAD), OLHO + rr * Math.tan(el * RAD), -rr * Math.cos(az2 * RAD));
+    var quente = sorte();
+    if (quente < 0.55) lc.push(1.0, 0.78, 0.55);
+    else if (quente < 0.85) lc.push(1.0, 0.86, 0.74);
+    else lc.push(1.0, 0.66, 0.78);
+    lt.push(2.2 + sorte() * 3.2);
+    lf.push(sorte() * 100);
+    ll.push(sorte() < 0.05 ? 9 : 0.12 + sorte() * 0.9);   // umas poucas ficam acesas
+  }
+  var gl = geometriaQuads(lp, {
+    aColor:{ dados:lc, tam:3 }, aSize:{ dados:lt, tam:1 }, aPhase:{ dados:lf, tam:1 }, aLimiar:{ dados:ll, tam:1 }
+  });
+  luzesCidade = malhaQuads(gl, registrarTela(new THREE.ShaderMaterial({
+    uniforms: { uApagar: { value: 0 }, uPx: { value: 1 }, uTime: { value: 0 }, uOpacity: { value: 1 }, uTela: { value: new THREE.Vector2(1, 1) } },
+    vertexShader: vsLuzes, fragmentShader: fsEstrela,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  })));
+  scene.add(luzesCidade);
+}
+
+/* ---- a terra lá embaixo, quando a gente chega no espaço ---- */
+var CENTRO_TERRA, EIXO_E, EIXO_U, EIXO_N;
+function prepararEixosDaTerra(){
+  var f = NOITE.lat * RAD, l = NOITE.lon * RAD;
+  EIXO_U = new THREE.Vector3(Math.cos(f) * Math.cos(l), Math.cos(f) * Math.sin(l), Math.sin(f));
+  EIXO_E = new THREE.Vector3(-Math.sin(l), Math.cos(l), 0);
+  EIXO_N = new THREE.Vector3(-Math.sin(f) * Math.cos(l), -Math.sin(f) * Math.sin(l), Math.cos(f));
+  CENTRO_TERRA = new THREE.Vector3(0, -RAIO_TERRA - 0.4, 0);
+}
+/* latitude/longitude -> mundo 3d (x leste, y pra cima, z sul, com sapucaia no topo) */
+function geoParaMundo(lat, lon, h){
+  var f = lat * RAD, l = lon * RAD;
+  var p = new THREE.Vector3(Math.cos(f) * Math.cos(l), Math.cos(f) * Math.sin(l), Math.sin(f));
+  return new THREE.Vector3(p.dot(EIXO_E), p.dot(EIXO_U), -p.dot(EIXO_N)).multiplyScalar(RAIO_TERRA + (h || 0)).add(CENTRO_TERRA);
+}
+
+// o contorno do rio grande do sul, ponto a ponto
+var CONTORNO_RS = [
+  [-29.33,-49.72],[-29.05,-49.93],[-28.62,-49.99],[-28.47,-50.25],[-28.32,-50.72],[-28.05,-51.20],[-27.72,-51.45],
+  [-27.52,-51.95],[-27.36,-52.43],[-27.25,-53.00],[-27.12,-53.50],[-27.15,-53.83],[-27.50,-54.30],[-27.78,-54.85],
+  [-28.05,-55.35],[-28.45,-55.85],[-28.95,-56.25],[-29.45,-56.75],[-29.78,-57.10],[-30.18,-57.60],[-30.30,-57.05],
+  [-30.40,-56.45],[-30.62,-55.95],[-30.88,-55.55],[-31.25,-55.00],[-31.55,-54.55],[-31.88,-54.15],[-32.15,-53.75],
+  [-32.55,-53.30],[-32.90,-53.20],[-33.30,-53.35],[-33.52,-53.43],[-33.75,-53.39],[-33.20,-52.75],[-32.60,-52.35],
+  [-32.17,-52.08],[-31.60,-51.40],[-31.05,-50.85],[-30.45,-50.35],[-29.95,-50.12],[-29.33,-49.72]
+];
+
+function linhaGeo(aneis, cor, altura){
+  var pos = [];
+  aneis.forEach(function(anel){
+    for (var i = 0; i < anel.length - 1; i++) {
+      var a = geoParaMundo(anel[i][0], anel[i][1], altura), b = geoParaMundo(anel[i + 1][0], anel[i + 1][1], altura);
+      pos.push(a.x, a.y, a.z, b.x, b.y, b.z);
+    }
+  });
+  var g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  var l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({
+    color: corReal(cor), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  l.renderOrder = 2;
+  l.visible = false;
+  return l;
+}
+
+function spriteTexto(txt, estilo){
+  var info = texturaTexto({
+    txt: txt, px: estilo.px || 56, italic: estilo.italic, espaco: estilo.espaco,
+    cor: estilo.cor || '#fdeef4', brilho: estilo.brilho || 'rgba(255,120,180,0.8)', larg: 2000
+  });
+  var tex = soltarDepoisDeEnviar(new THREE.CanvasTexture(info.canvas));
+  tex.minFilter = THREE.LinearFilter;
+  tex.generateMipmaps = false;
+  if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+  var sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false, opacity: 0 }));
+  sp.userData.proporcao = info.h / info.px;
+  sp.userData.aspecto = info.w / info.h;
+  if (estilo.centro) sp.center.set(estilo.centro[0], estilo.centro[1]);
+  sp.renderOrder = 3;
+  sp.visible = false;
+  return sp;
+}
+
+/* coisas desenhadas em cima do planeta: aparecem numa janela do scroll e só a partir de certa altura */
+function naTerra(obj, janela, opcoes){
+  opcoes = opcoes || {};
+  scene.add(obj);
+  coisasDaTerra.push({ obj: obj, janela: janela, px: opcoes.px || 0, max: opcoes.max || 1, alturaMin: opcoes.alturaMin || 0, pulsa: opcoes.pulsa });
+  return obj;
+}
+
+function criarTerra(){
+  prepararEixosDaTerra();
+  var preto = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+  preto.needsUpdate = true;
+  terra = new THREE.Mesh(
+    new THREE.SphereGeometry(RAIO_TERRA, 256, 128),
+    new THREE.ShaderMaterial({
+      uniforms: {
+        uMapa: { value: criarMapaDaTerra() }, uDia: { value: preto }, uNoite: { value: preto }, uTemTex: { value: 0 },
+        uMapaKm: { value: MAPA_KM }, uRT: { value: RAIO_TERRA }, uLuz: { value: 0.9 }, uAltura: { value: 0 },
+        uLon0: { value: NOITE.lon * RAD }, uE: { value: EIXO_E }, uU: { value: EIXO_U }, uN: { value: EIXO_N },
+        uSol: { value: vetor3(ceu.sol.alt, ceu.sol.az, 1) }
+      },
+      vertexShader: vsTerra, fragmentShader: fsTerra
+    })
+  );
+  terra.position.copy(CENTRO_TERRA);
+  terra.visible = false;
+  scene.add(terra);
+
+  // as fotos da terra de noite e de dia (NASA), que começaram a carregar lá no início
+  promessaTerra.then(function(imgs){
+    if (!imgs || !imgs[0] || !imgs[1]) return;
+    function textura(img, maxLarg){
+      var tx = new THREE.Texture(imagemNoTamanho(img, maxLarg));
+      tx.wrapS = THREE.RepeatWrapping;
+      tx.anisotropy = renderer.capabilities.getMaxAnisotropy ? renderer.capabilities.getMaxAnisotropy() : 1;
+      tx.needsUpdate = true;
+      return tx;
+    }
+    terra.material.uniforms.uDia.value = textura(imgs[0], celular ? 2048 : 4096);
+    terra.material.uniforms.uNoite.value = textura(imgs[1], 4096);
+    terra.material.uniforms.uTemTex.value = 1;
+    redesenharNoTeste();
+  });
+
+  atmosfera = new THREE.Mesh(
+    new THREE.SphereGeometry(RAIO_TERRA + 150, 192, 96),
+    new THREE.ShaderMaterial({
+      uniforms: { uCentro: { value: CENTRO_TERRA }, uRT: { value: RAIO_TERRA }, uOpacity: { value: 0 }, uSol: { value: vetor3(ceu.sol.alt, ceu.sol.az, 1) } },
+      vertexShader: vsAtmosfera, fragmentShader: fsAtmosfera,
+      transparent: true, depthWrite: false, depthTest: false, blending: THREE.AdditiveBlending
+    })
+  );
+  atmosfera.position.copy(CENTRO_TERRA);
+  atmosfera.visible = false;
+  atmosfera.renderOrder = 1;
+  scene.add(atmosfera);
+
+  // um anel rosa em volta de casa, e os nomes
+  marcaCasa = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(texturaAnel()),
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0
+  }));
+  marcaCasa.userData.proporcao = 1;
+  marcaCasa.position.copy(geoParaMundo(NOITE.lat, NOITE.lon, 6));
+  marcaCasa.renderOrder = 3;
+  marcaCasa.visible = false;
+  var FIM_TERRA = [0.585, 0.595];
+  naTerra(marcaCasa, [0.430, 0.440].concat(FIM_TERRA), { px: 50, pulsa: true });
+
+  var nomeCasa = spriteTexto(NOITE.lugar.toLowerCase(), { px: 60, espaco: 10, cor: '#ffc6dc', centro: [-0.16, 0.5] });
+  nomeCasa.position.copy(marcaCasa.position);
+  naTerra(nomeCasa, [0.440, 0.450].concat(FIM_TERRA), { px: 12 });
+
+  var rs = spriteTexto('Rio Grande do Sul', { px: 60, italic: true, cor: '#ffe1ec', centro: [1.04, 0.5] });
+  rs.position.copy(geoParaMundo(-29.3, -56.6, 8));
+  naTerra(rs, [0.470, 0.480].concat(FIM_TERRA), { px: 14, alturaMin: 900 });
+  naTerra(linhaGeo([CONTORNO_RS], 0xff9fc5, 4), [0.470, 0.480].concat(FIM_TERRA), { max: 0.85, alturaMin: 700 });
+
+  var br = spriteTexto('BRASIL', { px: 60, espaco: 16, cor: '#ffe9f1' });
+  br.position.copy(geoParaMundo(-10, -52, 10));
+  naTerra(br, [0.485, 0.495].concat(FIM_TERRA), { px: 18, alturaMin: 3500 });
+
+  // na tela pequena do celular, só os nomes que importam
+  (celular ? [] : [['Uruguai', -32.7, -55.9], ['Argentina', -34.5, -64.0], ['Oceano Atlântico', -27, -36]]).forEach(function(r){
+    var sp = spriteTexto(r[0], { px: 56, italic: true, cor: '#cdb9d4', brilho: 'rgba(160,120,200,0.6)' });
+    sp.position.copy(geoParaMundo(r[1], r[2], 10));
+    naTerra(sp, [0.490, 0.500].concat(FIM_TERRA), { px: 12, max: 0.7, alturaMin: 1800 });
+  });
+
+  // o contorno do brasil vem do natural earth, também pela internet
+  if (window.topojson) {
+    promessaPaises.then(function(mundo){
+      if (!mundo) return;
+      var feitos = topojson.feature(mundo, mundo.objects.countries).features;
+      var brasil = feitos.filter(function(f){ return f.properties && f.properties.name === 'Brazil'; })[0];
+      if (!brasil) return;
+      var poligonos = brasil.geometry.type === 'Polygon' ? [brasil.geometry.coordinates] : brasil.geometry.coordinates;
+      var aneis = [];
+      poligonos.forEach(function(pol){ pol.forEach(function(anel){ aneis.push(anel.map(function(c){ return [c[1], c[0]]; })); }); });
+      naTerra(linhaGeo(aneis, 0xffc2da, 5), [0.485, 0.495].concat(FIM_TERRA), { max: 0.6, alturaMin: 2500 });
+      redesenharNoTeste();
+    }).catch(function(){});
+  }
+}
+
+function redesenharNoTeste(){
+  if (MODO_TESTE && window.__ceu) window.__ceu.ir(atualT, 4);
+}
+
+/* um sprite com tamanho fixo na tela, qualquer que seja a distância */
+function tamanhoNaTela(obj, px){
+  var d = camera.position.distanceTo(obj.position);
+  var h = px * (obj.userData.proporcao || 1) * 2 * d * Math.tan(camera.fov * RAD / 2) / alturaTela;
+  obj.scale.set(h * (obj.userData.aspecto || 1), h, 1);
+}
+
+/* ---- poeira que acompanha o voo ---- */
+var CORES = [
+  [1.00, 0.62, 0.77],
+  [0.92, 0.44, 0.61],
+  [1.00, 0.90, 0.94],
+  [0.79, 0.64, 0.91],
+  [1.00, 0.77, 0.68]
+];
+
+function criarPoeira(){
+  var total = celular ? 2200 : 4400;
+  var pos = [], cor = [], tam = [];
+  for (var i = 0; i < total; i++) {
+    var s = -20 + Math.random() * 980;
+    var raio = 8 + Math.pow(Math.random(), 0.7) * 60;
+    var ang = Math.random() * Math.PI * 2;
+    var p = pontoDoVoo(s, Math.cos(ang) * raio, Math.sin(ang) * raio * 0.8);
+    pos.push(p.x, p.y, p.z);
+    var c = CORES[(Math.random() * CORES.length) | 0];
+    var b = 0.55 + Math.random() * 0.45;
+    cor.push(c[0] * b, c[1] * b, c[2] * b);
+    tam.push(0.8 + Math.random() * 2.6);
+  }
+  poeira = nuvemPoeira(pos, cor, tam, 0, 0.0048);
+  scene.add(poeira);
+}
+
+/* ---- textos que flutuam no céu ----
+   a posição sai do próprio trajeto: no instante "t" o texto está bem na
+   frente da câmera, a "dist" unidades, deslocado por dxRel/dyRel da tela */
+function montarTextos(){
+  var lista = [
+    { t:A(0.000), dist:40, dyRel: 0.19, txt: DATA_CURTA, px:210, italic:true, larg:1400, janela:AJ([-2,-1,0.028,0.040]) },
+    { t:A(0.000), dist:40, dyRel:-0.06, txt: texto('abertura'), px:76, italic:true, cor:'#ffc6dc', larg:1600, fator:0.72, janela:AJ([-2,-1,0.028,0.040]) },
+    { t:A(0.052), dist:40, dyRel: 0.05, txt: texto('comecou'), janela:AJ([0.040,0.050,0.070,0.080]) },
+    { t:A(0.094), dist:40, dyRel: 0.02, txt: texto('beijo'), janela:AJ([0.082,0.092,0.110,0.119]) },
+    { t:A(0.130), dist:40, dyRel: 0.02, txt: texto('luzes'), janela:AJ([0.120,0.130,0.144,0.152]) },
+    { t:A(0.162), dist:40, dyRel: 0.02, txt: texto('apagar'), janela:AJ([0.153,0.162,0.180,0.190]) },
+    { t:A(0.222), dist:40, dyRel: 0.00, txt: texto('ceuVerdade'), janela:AJ([0.210,0.221,0.236,0.245]) },
+    { t:A(0.256), dist:40, dyRel: 0.00, txt: texto('estrelasViram'), janela:AJ([0.246,0.256,0.270,0.279]) },
+    { t:A(0.310), dist:40, dyRel: cruzBaixo() ? 0.58 : -0.34, txt: textoCruz(), fator:0.72, janela:AJ([0.296,0.307,0.325,0.334]) }
+  ];
+  if (destaque) {
+    lista.push({ t:A(0.365), dist:40, dyRel: 0.30, txt: destaque.texto, fator:0.72, janela:AJ([0.350,0.361,0.378,0.387]) });
+  }
+  lista.push({ t:A(0.412), dist:40, dyRel: 0.00, txt: texto('subir'), janela:AJ([0.398,0.408,0.426,0.436]) });
+  lista.push({ t:A(0.556), dist:40, dyRel: 0.36, txt: texto('mundoGrande'), fator:0.74, janela:AJ([0.543,0.552,0.568,0.577]) });
+  var deitada = window.innerWidth > window.innerHeight;   // no computador o planeta ocupa a altura toda, então o texto vai pro lado
+  lista.push({ t:0.535, dist:40, dxRel: deitada ? -0.62 : 0, dyRel: deitada ? 0.05 : 0.64, txt: texto('amorDaVida'), fator: deitada ? 0.3 : 0.72, janela:[0.520,0.527,0.548,0.556] });
+  lista.push({ t:0.5895, dist:95, dyRel:-0.22, txt: texto('viaLactea'), fator:0.72, janela:[0.583,0.588,0.597,0.603] });
+  lista.push({ t:0.830, dist:30, dyRel: 0.68, txt: texto('estrela'), fator:0.66, janela:[0.824,0.830,0.848,0.855] });
+  return lista;
+}
+
+function pontoEnquadrado(t){
+  var est = estadoNoT(t);
+  var cam = curvaPos.getPoint(est.u);
+  var olha = curvaOlha.getPoint(est.u);
+  var frente = olha.clone().sub(cam).normalize();
+  var ingreme = faixa(-frente.y, 0.86, 0.97);                  // igual à câmera: olhando pra baixo, o norte é pra cima
+  var cimaRef = new THREE.Vector3(0, 1 - ingreme, -ingreme).normalize();
+  var lado = new THREE.Vector3().crossVectors(frente, cimaRef).normalize();
+  var cima = new THREE.Vector3().crossVectors(lado, frente).normalize();
+  return { cam: cam, frente: frente, lado: lado, cima: cima, fov: est.fov };
+}
+
+function registrarAjuste(mesh, larguraBase, distLeitura, fator, maxEscala, fatorAlt){
+  mesh.userData.larguraBase = larguraBase;
+  mesh.userData.distLeitura = distLeitura;
+  mesh.userData.fator = fator;
+  mesh.userData.maxEscala = maxEscala || 1;
+  mesh.userData.fatorAlt = fatorAlt || 0.62;
+  textosParaAjustar.push(mesh);
+}
+
+function ancorar(mesh, cfg){
+  var q = pontoEnquadrado(cfg.t);
+  mesh.userData.ancora = {
+    cam: q.cam, frente: q.frente, lado: q.lado, cima: q.cima,
+    dist: cfg.dist, dxRel: cfg.dxRel || 0, dyRel: cfg.dyRel || 0
+  };
+  mesh.userData.fov = q.fov;
+  posicionarAncorado(mesh);
+}
+
+function posicionarAncorado(mesh){
+  var a = mesh.userData.ancora;
+  if (!a) return;
+  var meia = Math.tan(((mesh.userData.fov || 60) * RAD) / 2) * a.dist;
+  mesh.position.copy(a.cam)
+    .addScaledVector(a.frente, a.dist)
+    .addScaledVector(a.lado, a.dxRel * meia * camera.aspect)
+    .addScaledVector(a.cima, a.dyRel * meia);
+  mesh.up.copy(a.cima);
+  mesh.lookAt(a.cam);
+}
+
+function criarTextos(){
+  montarTextos().forEach(function(t){
+    t.px = t.px || 100;
+    t.italic = t.italic === undefined ? !t.espaco : t.italic;
+    t.brilho = t.brilho || 'rgba(255,159,197,0.6)';
+    t.larg = t.larg || 1500;
+    var info = texturaTexto(t);
+    var larguraMundo = info.w / PPU;
+    var mesh = planoComTextura(info, larguraMundo);
+    ancorar(mesh, t);
+    mesh.renderOrder = 3;
+    scene.add(mesh);
+    objetosFade.push({ mesh: mesh, aparece: 138, pleno: 62, some: 20, fim: 10, janela: t.janela });
+    registrarAjuste(mesh, larguraMundo, t.dist, t.fator || 0.8);
+  });
+}
+
+/* ---- as memórias: primeiro uma estrela ao longe, depois a foto ---- */
+var texBrilhoRosa;
+function criarMemorias(){
+  texBrilhoRosa = new THREE.CanvasTexture(texturaBrilho('rgba(255,190,220,ALPHA)'));
+  MEMORIAS.forEach(function(m, i){
+    var dados = FOTOS_DESTAQUE[m.id];
+    if (!dados || !dados.img) return;
+    var t = 0.595 + (i + 2.5) * 0.0145;
+    var info = texturaPolaroide(dados.img, m.legenda);
+    var larguraMundo = 22;
+    var largTotal = larguraMundo * (info.w / info.cardW);
+    var mesh = planoComTextura(info, largTotal);
+    var dx = (i % 2 ? -1 : 1) * 0.04;
+    ancorar(mesh, { t: t, dist: 34, dxRel: dx, dyRel: 0.03 });
+    var tilt = (i % 2 ? -1 : 1) * (0.03 + (i % 3) * 0.015);
+    mesh.userData.tilt = tilt;
+    mesh.rotateZ(tilt);
+    mesh.renderOrder = 4;
+    scene.add(mesh);
+    var janela = [t - 0.028, t - 0.018, t + 0.013, t + 0.020];
+    objetosFade.push({ mesh: mesh, aparece: 118, pleno: 60, some: 24, fim: 13, janela: janela });
+    registrarAjuste(mesh, largTotal, 34, 0.76, 1, 0.52);
+
+    var sp = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: texBrilhoRosa, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0
+    }));
+    sp.position.copy(mesh.position);
+    sp.scale.set(largTotal * 2.1, largTotal * 2.1, 1);
+    scene.add(sp);
+    objetosFade.push({ mesh: sp, aparece: 118, pleno: 60, some: 24, fim: 13, max: 0.28, janela: janela, segue: mesh });
+
+    var estrela = new THREE.Sprite(new THREE.SpriteMaterial({
+      map: texBrilhoRosa, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0
+    }));
+    estrela.position.copy(mesh.position);
+    estrela.scale.set(9, 9, 1);
+    estrela.renderOrder = 4;
+    scene.add(estrela);
+    objetosFade.push({ mesh: estrela, longe: 330, medio: 220, aparece: 150, pleno: 95, max: 0.95,
+      janela: [Math.max(t - 0.080, 0.596), Math.max(t - 0.066, 0.602), t - 0.014, t - 0.004], segue: mesh });
+  });
+}
+
+/* ---- o nosso coração: as fotos viram estrelas ---- */
+function formaDoCoracao(){
+  var bruto = [], N = 1440, minY = 1e9, maxY = -1e9;
+  for (var i = 0; i < N; i++) {
+    var th = i / N * Math.PI * 2;
+    var x = 16 * Math.pow(Math.sin(th), 3);
+    var y = 13 * Math.cos(th) - 5 * Math.cos(2 * th) - 2 * Math.cos(3 * th) - Math.cos(4 * th);
+    bruto.push([x, y]);
+    minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+  }
+  var cy = (minY + maxY) / 2;
+  return {
+    pts: bruto.map(function(p){ return [p[0] / 16, (p[1] - cy) / 16]; }),
+    altura: (maxY - minY) / 16
+  };
+}
+
+function dentroDoPoligono(x, y, poli){
+  var dentro = false;
+  for (var i = 0, j = poli.length - 1; i < poli.length; j = i++) {
+    var xi = poli[i][0], yi = poli[i][1], xj = poli[j][0], yj = poli[j][1];
+    if (((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi)) dentro = !dentro;
+  }
+  return dentro;
+}
+
+function contornoUniforme(pts, n){
+  var acum = [0];
+  for (var i = 1; i <= pts.length; i++) {
+    var a = pts[i - 1], b = pts[i % pts.length];
+    acum.push(acum[i - 1] + Math.hypot(b[0] - a[0], b[1] - a[1]));
+  }
+  var total = acum[acum.length - 1];
+  var saida = [], j = 0;
+  for (var k = 0; k < n; k++) {
+    var alvo = k / n * total;
+    while (acum[j + 1] < alvo) j++;
+    var f = (alvo - acum[j]) / (acum[j + 1] - acum[j]);
+    var p = pts[j], q = pts[(j + 1) % pts.length];
+    saida.push([lerp(p[0], q[0], f), lerp(p[1], q[1], f)]);
+  }
+  return saida;
+}
+
+/* encaixa exatamente n quadradinhos dentro do coração */
+function mosaicoDoCoracao(poli, n){
+  var melhor = null;
+  var desvios = [[0, 0], [0.5, 0], [0, 0.5], [0.5, 0.5], [0.25, 0.25], [0.75, 0.25]];
+  for (var g = 0.45; g > 0.08; g -= 0.0015) {
+    for (var d = 0; d < desvios.length; d++) {
+      var cel = [];
+      for (var y = -1.2 + desvios[d][1] * g; y < 1.2; y += g) {
+        for (var x = -1.2 + desvios[d][0] * g; x < 1.2; x += g) {
+          if (dentroDoPoligono(x, y, poli)) cel.push([x, y]);
+        }
+      }
+      if (cel.length === n) return { celulas: cel, g: g };
+      if (cel.length > n && !melhor) melhor = { celulas: cel, g: g };
+    }
+    if (melhor) break;
+  }
+  var borda = function(c){
+    var m = 1e9;
+    for (var i = 0; i < poli.length; i += 6) m = Math.min(m, Math.hypot(c[0] - poli[i][0], c[1] - poli[i][1]));
+    return m;
+  };
+  melhor.celulas.sort(function(a, b){ return borda(b) - borda(a); });
+  melhor.celulas.length = n;
+  return melhor;
+}
+
+function anguloHorario(p){ return ((90 - Math.atan2(p[1], p[0]) * GRAU) + 360) % 360; }
+
+function criarCoracao(){
+  var ids = Object.keys(FOTOS_MINI).filter(function(k){ return FOTOS_MINI[k].img; });
+  var n = ids.length;
+  var forma = formaDoCoracao();
+  var poli = forma.pts.filter(function(p, i){ return i % 6 === 0; });
+  var contorno = contornoUniforme(forma.pts, n);
+  var mos = mosaicoDoCoracao(poli, n);
+  var ordemCel = mos.celulas.slice().sort(function(a, b){ return anguloHorario(a) - anguloHorario(b); });
+  var ordemCont = contorno.map(function(p, i){ return i; }).sort(function(a, b){ return anguloHorario(contorno[a]) - anguloHorario(contorno[b]); });
+
+  var grupo = new THREE.Group();
+  grupo.position.copy(H_ESTACAO);
+  grupo.quaternion.copy(Q_ESTACAO);
+  scene.add(grupo);
+
+  var sorte = sorteio(520);
+  var pecas = [];
+  var geoPeca = new THREE.PlaneGeometry(1, 1);
+  ordemCel.forEach(function(c, k){
+    var img = FOTOS_MINI[ids[k % n]].img;
+    var tex = soltarDepoisDeEnviar(new THREE.CanvasTexture(texturaMini(img)));
+    tex.minFilter = THREE.LinearFilter;
+    tex.generateMipmaps = false;
+    if (THREE.sRGBEncoding !== undefined) tex.encoding = THREE.sRGBEncoding;
+    var mesh = new THREE.Mesh(geoPeca, new THREE.MeshBasicMaterial({
+      map: tex, transparent: true, depthWrite: false, opacity: 0, side: THREE.DoubleSide, fog: false
+    }));
+    mesh.renderOrder = 5;
+    mesh.visible = false;
+    grupo.add(mesh);
+    var idxCont = ordemCont[k];
+    pecas.push({
+      mesh: mesh,
+      ini: [(sorte() - 0.5) * 4.6, (sorte() - 0.5) * 3.8, 0.15 + sorte() * 0.72],
+      giroIni: (sorte() - 0.5) * 2.4,
+      giro: (sorte() - 0.5) * 0.2,
+      mos: c,
+      cont: contorno[idxCont],
+      indice: idxCont,
+      chegada: 0.823 + sorte() * 0.018,
+      acende: 0.850 + idxCont / n * 0.012
+    });
+  });
+
+  var pos = new Float32Array(n * 3), tam = new Float32Array(n), alfa = new Float32Array(n), fase = new Float32Array(n);
+  for (var i = 0; i < n; i++) fase[i] = sorte() * 10;
+  var gp = geometriaQuads(pos, { aSize:{ dados:tam, tam:1 }, aAlpha:{ dados:alfa, tam:1 }, aPhase:{ dados:fase, tam:1 } }, true);
+  var pontos = malhaQuads(gp, registrarTela(new THREE.ShaderMaterial({
+    uniforms: {
+      uEscalaTela: { value: 800 }, uPx: { value: 1 }, uTime: { value: 0 },
+      uCor: { value: new THREE.Color(0xffb8d4) }, uTela: { value: new THREE.Vector2(1, 1) }
+    },
+    vertexShader: vsCoracao, fragmentShader: fsCoracao,
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending
+  })));
+  pontos.renderOrder = 6;
+  grupo.add(pontos);
+
+  var pares = [];
+  for (i = 0; i < n; i++) {
+    var a = contorno[i], b = contorno[(i + 1) % n];
+    pares.push([new THREE.Vector3(a[0], a[1], 0), new THREE.Vector3(b[0], b[1], 0)]);
+  }
+  var linhas = faixaLuminosa(pares, 0.0075, function(A, B){
+    var d = B.clone().sub(A);
+    return new THREE.Vector3(-d.y, d.x, 0).normalize();
+  }, 0xffa9cb, 0.012);
+  linhas.renderOrder = 5;
+  grupo.add(linhas);
+
+  var gFina = new THREE.BufferGeometry();
+  gFina.setAttribute('position', new THREE.Float32BufferAttribute([].concat.apply([], contorno.map(function(p){ return [p[0], p[1], 0]; })), 3));
+  var linhaFina = new THREE.LineLoop(gFina, new THREE.LineBasicMaterial({
+    color: corReal(0xffa9cb), transparent: true, opacity: 0, depthWrite: false, blending: THREE.AdditiveBlending
+  }));
+  grupo.add(linhaFina);
+
+  var brilho = new THREE.Sprite(new THREE.SpriteMaterial({
+    map: new THREE.CanvasTexture(texturaBrilho('rgba(255,130,180,ALPHA)')),
+    transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, opacity: 0
+  }));
+  brilho.scale.set(4.4, 4.4, 1);
+  grupo.add(brilho);
+
+  var infoNome = texturaTexto({ txt: INICIAIS, px: 150, italic: true, cor: '#fff2f7', brilho: 'rgba(255,159,197,0.8)', larg: 900 });
+  var nome = planoComTextura(infoNome, 0.95);
+  nome.position.set(0, -forma.altura / 2 - 0.34, 0);
+  nome.renderOrder = 6;
+  grupo.add(nome);
+  var infoSub = texturaTexto({ txt: texto('constelacao'), px: 50, espaco: 9, cor: '#ff9fc5', larg: 2000 });
+  var sub = planoComTextura(infoSub, 2.0);
+  sub.position.set(0, -forma.altura / 2 - 0.66, 0);
+  sub.renderOrder = 6;
+  grupo.add(sub);
+
+  coracao = {
+    grupo: grupo, pecas: pecas, pontos: pontos, linhas: linhas, linhaFina: linhaFina,
+    brilho: brilho, nome: nome, sub: sub, g: mos.g, altura: forma.altura, largura: 2
+  };
+}
+
+/* ============================================================
+   atualização de cada quadro
+   ============================================================ */
+
+function atualizarCamera(t, tempo){
+  if (modoLivre) {
+    var k = 0.12;
+    livre.yaw = lerp(livre.yaw, livre.alvoYaw, k);
+    livre.pitch = lerp(livre.pitch, livre.alvoPitch, k);
+    livre.fov = lerp(livre.fov, livre.alvoFov, k);
+    camera.position.copy(ORIGEM);
+    camera.up.set(0, 1, 0);
+    camera.lookAt(ORIGEM.clone().add(vetor3(livre.pitch, livre.yaw, 100)));
+    if (Math.abs(camera.fov - livre.fov) > 0.01 || camera.near !== 0.3) { camera.fov = livre.fov; camera.near = 0.3; camera.updateProjectionMatrix(); }
+    return;
+  }
+
+  var est = estadoNoT(t);
+  curvaPos.getPoint(est.u, vPos);
+  curvaOlha.getPoint(est.u, vOlha);
+
+  // respiração de câmera na mão
+  var noAr = faixa(t, A(0.43), A(0.47)) * (1 - faixa(t, 0.966, 0.974));
+  var amp = movimentoReduzido ? 0 : lerp(0.12, 1, noAr);
+  var respX = (Math.sin(tempo * 0.47) * 0.55 + Math.sin(tempo * 1.13) * 0.22) * amp;
+  var respY = (Math.cos(tempo * 0.39) * 0.45 + Math.sin(tempo * 0.91) * 0.18) * amp;
+
+  camera.position.set(vPos.x + respX + mouseX * 1.6 * amp, Math.max(1.0, vPos.y + respY + mouseY * 1.2 * amp), vPos.z);
+  // olhando reto pra baixo, o "pra cima" da tela é o norte (senão o mapa gira à toa)
+  var descida = vOlha.y - vPos.y;
+  var ingreme = faixa(-descida / Math.max(1, vOlha.distanceTo(vPos)), 0.86, 0.97);
+  camera.up.set(0, 1 - ingreme, -ingreme).normalize();
+  var calma = movimentoReduzido ? 0 : 1;
+  vOlha.x += (Math.sin(tempo * 0.21) * 3 + mouseX * 10) * (1 - noAr) * LONGE / 750 * calma;
+  vOlha.y += (Math.cos(tempo * 0.17) * 2 + mouseY * 7) * (1 - noAr) * LONGE / 750 * calma;
+  camera.lookAt(vOlha);
+  camera.rotateZ(est.roll + Math.sin(tempo * 0.31) * 0.006);
+
+  // olhando o planeta de longe, o plano de corte mais perto dá precisão para a profundidade
+  var perto = lerp(0.3, 20, faixa(camera.position.y, 1500, 3000) * (1 - faixa(t, 0.575, 0.585)));
+  if (Math.abs(camera.fov - est.fov) > 0.01 || Math.abs(camera.near - perto) > 0.01) {
+    camera.fov = est.fov;
+    camera.near = perto;
+    camera.updateProjectionMatrix();
+  }
+}
+
+function atualizarFades(t, dt){
+  var suavidade = 1 - Math.pow(0.0002, dt || 0.016);
+  camera.updateMatrixWorld();
+  camera.getWorldDirection(vFrente);
+  for (var i = 0; i < objetosFade.length; i++) {
+    var o = objetosFade[i];
+    vTmp.copy(o.mesh.position).sub(camera.position);
+    var dist = vTmp.length();
+    var aFrente = vTmp.normalize().dot(vFrente);
+    var sai = faixa(aFrente, -0.62, -0.10);
+    var op;
+
+    if (o.longe) {
+      op = faixa(dist, o.longe, o.medio) * (1 - faixa(dist, o.aparece, o.pleno)) * sai;
+    } else {
+      var entra = faixa(dist, o.aparece, o.pleno);
+      var passa = Math.pow(faixa(dist, o.fim, o.some), 2.0);
+      var alvo = o.segue || o.mesh;
+      var moldura = 1;
+      var g = alvo.geometry && alvo.geometry.parameters;
+      if (aFrente > 0 && g && g.width) {
+        alvo.updateMatrixWorld();
+        vBordaA.set(-g.width / 2, 0, 0); alvo.localToWorld(vBordaA); vBordaA.project(camera);
+        vBordaB.set( g.width / 2, 0, 0); alvo.localToWorld(vBordaB); vBordaB.project(camera);
+        var esq = Math.min(vBordaA.x, vBordaB.x);
+        var dir = Math.max(vBordaA.x, vBordaB.x);
+        var larguraTela = dir - esq;
+        if (larguraTela > 0.0001) {
+          var visivelNaTela = Math.min(1, dir) - Math.max(-1, esq);
+          moldura = faixa(visivelNaTela / larguraTela, 0.50, 0.90);
+        }
+        vTela.copy(alvo.position).project(camera);
+        moldura *= 1 - faixa(Math.abs(vTela.y), 0.95, 1.4);
+      }
+      op = entra * passa * sai * moldura;
+    }
+
+    op *= (o.max || 1) * janelaDoScroll(o.janela, t);
+    if (modoLivre) op = 0;
+    o.mesh.material.opacity = lerp(o.mesh.material.opacity, op, suavidade);
+    o.mesh.visible = o.mesh.material.opacity > 0.002;
+  }
+
+  var k = 1 - Math.pow(0.0005, dt || 0.016);
+  for (i = 0; i < fadesJanela.length; i++) {
+    var f = fadesJanela[i];
+    var alvoOp = modoLivre ? f.livre : (f.janela ? janelaDoScroll(f.janela, t) * f.max : 0);
+    f.mat.opacity = lerp(f.mat.opacity, alvoOp, k);
+  }
+}
+
+/* o céu: as luzes se apagam, as estrelas aparecem, e lá em cima o ar some */
+function atualizarCeu(t, tempo, dt){
+  var altura = camera.position.y;
+  var espaco = modoLivre ? 0 : suave(faixa(altura, 3, 120));
+  var rev = modoLivre ? 1 : suave(faixa(t, A(0.162), A(0.210)));
+  var vl = modoLivre ? 1 : suave(faixa(t, A(0.172), A(0.228)));
+  var px = renderer.getPixelRatio();
+  var zoom = clamp(Math.sqrt(60 / camera.fov), 0.85, 1.7);
+
+  [estrelasReais, poeiraVL].forEach(function(p){
+    var u = p.material.uniforms;
+    u.uMagLimite.value = lerp(2.7, 7.6, rev) + espaco * 0.3;
+    u.uPx.value = px;
+    u.uZoom.value = zoom;
+    u.uTime.value = tempo;
+    u.uCintila.value = movimentoReduzido ? 0 : 0.24 * (1 - espaco);
+    u.uAtmosfera.value = 1 - espaco;
+  });
+  estrelasReais.material.uniforms.uOpacity.value = 1 + espaco * 0.15;
+  poeiraVL.material.uniforms.uOpacity.value = vl * (0.85 + espaco * 0.15);
+  viaLactea.material.uniforms.uOpacity.value = vl * lerp(1.45, 1.25, espaco);
+  nuvensMagalhaes.forEach(function(n){ n.material.opacity = vl * 0.45; });
+
+  domo.material.uniforms.uPoluicao.value = 1 - 0.85 * rev;
+  domo.material.uniforms.uEspaco.value = espaco;
+
+  // o chão só existe perto do chão; a terra só aparece lá de cima
+  var noChaoAinda = altura < 25;
+  chao.visible = silhueta.visible = luzesCidade.visible = noChaoAinda || modoLivre;
+  terra.visible = !modoLivre && altura > 15;
+  atmosfera.visible = !modoLivre && altura > 165;
+  atmosfera.material.uniforms.uOpacity.value = faixa(altura, 165, 260);
+  terra.material.uniforms.uAltura.value = altura;
+
+  coisasDaTerra.forEach(function(c){
+    var op = modoLivre ? 0 : janelaDoScroll(c.janela, t) * c.max;
+    if (c.alturaMin) op *= faixa(altura, c.alturaMin, c.alturaMin * 1.6);
+    if (c.pulsa) op *= 0.8 + 0.2 * Math.sin(tempo * 2.4);
+    c.obj.visible = op > 0.002;
+    c.obj.material.opacity = op;
+    if (c.obj.visible && c.px) tamanhoNaTela(c.obj, c.px);
+  });
+
+  var lu = luzesCidade.material.uniforms;
+  lu.uApagar.value = modoLivre ? 1 : faixa(t, A(0.153), A(0.193));
+  lu.uPx.value = px;
+  lu.uTime.value = tempo;
+
+  if (lua) brilhoLua.material.opacity = lerp(0.12, 0.26, rev);
+
+  var um = destaqueCruz.material.uniforms;
+  if (modoLivre) { um.uDesenho.value = 1; um.uOpacity.value = lerp(um.uOpacity.value, 0.55, 0.08); }
+  else {
+    um.uDesenho.value = suave(faixa(t, A(0.281), A(0.300)));
+    um.uOpacity.value = 0.9 * janelaDoScroll(AJ([0.277, 0.285, 0.326, 0.336]), t);
+  }
+  if (destaqueExtra) {
+    var ue = destaqueExtra.material.uniforms;
+    ue.uDesenho.value = modoLivre ? 1 : suave(faixa(t, A(0.343), A(0.363)));
+    ue.uOpacity.value = modoLivre ? 0.45 : 0.85 * janelaDoScroll(AJ([0.340, 0.348, 0.380, 0.389]), t);
+  }
+
+  var ku = 1 - Math.pow(0.001, dt || 0.016);
+  var alvoPoeira = modoLivre ? 0 : faixa(t, 0.590, 0.610) * (1 - faixa(t, 0.940, 0.955));
+  poeira.material.uniforms.uOpacity.value = lerp(poeira.material.uniforms.uOpacity.value, alvoPoeira, ku);
+  poeira.material.uniforms.uTime.value = tempo;
+}
+
+function atualizarCoracao(t, tempo){
+  var c = coracao;
+  // na volta pra casa o coração vem junto, até assentar no céu
+  var fv = modoLivre ? 1 : progressoVolta(t);
+  c.grupo.position.copy(H_ESTACAO).lerp(H_FINAL, fv);
+  c.grupo.quaternion.copy(Q_ESTACAO).slerp(Q_FINAL, fv);
+  var W2 = c.grupo.scale.x;
+  var distCam = camera.position.distanceTo(c.grupo.position);
+  var profundidade = (S_CORACAO - S_ESTACAO) / W2;
+
+  var pos = c.pontos.geometry.attributes.centro.array;
+  var tam = c.pontos.geometry.attributes.aSize.array;
+  var alfa = c.pontos.geometry.attributes.aAlpha.array;
+
+  c.pecas.forEach(function(p, k){
+    var chegou, acendeu;
+    if (modoLivre) { chegou = 1; acendeu = 1; }
+    else {
+      chegou = saida3(faixa(t, p.chegada, p.chegada + 0.016));
+      acendeu = suave(faixa(t, p.acende, p.acende + 0.009));
+    }
+    var m = p.mesh;
+    var op = faixa(t, p.chegada, p.chegada + 0.004) * (1 - acendeu);
+    if (modoLivre || t > 0.93) op = 0;
+    m.material.opacity = op;
+    m.visible = op > 0.002;
+    if (m.visible) {
+      m.position.set(
+        lerp(p.ini[0], p.mos[0], chegou),
+        lerp(p.ini[1], p.mos[1], chegou),
+        lerp(p.ini[2] * profundidade, 0, chegou)
+      );
+      m.rotation.z = lerp(p.giroIni, p.giro, chegou);
+      var s = c.g * 0.9 * (1 - suave(acendeu) * 0.85);
+      m.scale.set(s, s, 1);
+    }
+
+    var i3 = p.indice * 3;
+    var e = suave(faixa(acendeu, 0.2, 1));
+    pos[i3]     = lerp(p.mos[0], p.cont[0], e);
+    pos[i3 + 1] = lerp(p.mos[1], p.cont[1], e);
+    pos[i3 + 2] = 0;
+    alfa[p.indice] = faixa(acendeu, 0.05, 0.5);
+    tam[p.indice] = lerp(3.4, 2.3, e) * (1 + 0.12 * Math.sin(tempo * 1.7 + k));
+  });
+  c.pontos.geometry.attributes.centro.needsUpdate = true;
+  c.pontos.geometry.attributes.aSize.needsUpdate = true;
+  c.pontos.geometry.attributes.aAlpha.needsUpdate = true;
+
+  var pu = c.pontos.material.uniforms;
+  pu.uEscalaTela.value = renderer.domElement.height / (2 * Math.tan(camera.fov * RAD / 2));
+  pu.uPx.value = renderer.getPixelRatio();
+  pu.uTime.value = tempo;
+
+  var desenho = modoLivre ? 1 : suave(faixa(t, 0.862, 0.878));
+  var lu = c.linhas.material.uniforms;
+  lu.uDesenho.value = desenho;
+  lu.uOpacity.value = modoLivre ? 0.8 : 0.9 * faixa(t, 0.859, 0.864);
+  var longe = faixa(distCam, 320, 600);
+  c.linhaFina.material.opacity = (desenho >= 1 ? 0.5 : 0) * longe;
+  c.brilho.material.opacity = 0.2 * desenho * (1 - longe * 0.5);
+
+  var nomeOp = modoLivre ? 0 : janelaDoScroll([0.876, 0.882, 0.893, 0.898], t);
+  c.nome.material.opacity = lerp(c.nome.material.opacity, nomeOp, 0.1);
+  c.sub.material.opacity = lerp(c.sub.material.opacity, nomeOp, 0.1);
+}
+
+/* ---- ajuste de tamanho / tela ---- */
+var alturaTrilho = 0, larguraAtual = 0, alturaAtual = 0;
+var _tamBuffer;
+
+function tamanhoDaCena(){
+  var c = document.getElementById('cena');
+  return { w: c.clientWidth || window.innerWidth, h: c.clientHeight || window.innerHeight };
+}
+var alturaTela = window.innerHeight;
+
+function aoRedimensionar(){
+  if (!renderer) return;
+  var tam = tamanhoDaCena();
+  var w = tam.w, h = tam.h;
+  alturaTela = h;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+  _tamBuffer = _tamBuffer || new THREE.Vector2();
+  renderer.getDrawingBufferSize(_tamBuffer);
+  materiaisTela.forEach(function(m){ m.uniforms.uTela.value.copy(_tamBuffer); });
+
+  // o coração cabe na tela, do celular ao monitor
+  var dist = S_CORACAO - S_ESTACAO - 8;
+  var visAlt = 2 * Math.tan(FOV_CORACAO * RAD / 2) * dist;
+  var visLarg = visAlt * camera.aspect;
+  var largura = Math.min(visLarg * 0.86, visAlt * 0.44 * (coracao.largura / coracao.altura));
+  coracao.grupo.scale.setScalar(largura / 2);
+  var meiaAltura = Math.atan(coracao.altura / 2 * largura / 2 / DIST_FINAL) * GRAU;
+  rotuloNossa.position.copy(vetor3(dirCoracao.alt - meiaAltura - 1.7, dirCoracao.az, R_ROTULO));
+  rotuloNossa.lookAt(grupoCeu.position);
+
+  textosParaAjustar.forEach(function(m){
+    var base = m.userData.larguraBase || 1;
+    var d = m.userData.distLeitura || 32;
+    var fator = m.userData.fator || 0.8;
+    var fatorAlt = m.userData.fatorAlt || 0.62;
+    var fov = m.userData.fov || 60;
+    var meia = Math.tan((fov * RAD) / 2) * d;
+    var vLarg = 2 * meia * camera.aspect;
+    var vAlt = 2 * meia;
+    var proporcao = m.geometry.parameters.height / m.geometry.parameters.width;
+    var escala = Math.min(m.userData.maxEscala || 1, (vLarg * fator) / base, (vAlt * fatorAlt) / (base * proporcao));
+    m.scale.set(escala, escala, 1);
+    if (m.userData.ancora) {
+      posicionarAncorado(m);
+      if (m.userData.tilt) m.rotateZ(m.userData.tilt);
+    }
+  });
+  objetosFade.forEach(function(o){ if (o.segue) o.mesh.position.copy(o.segue.position); });
+
+  var mundoPorPx = 2 * R_ROTULO * Math.tan(30 * RAD) / h;
+  rotulosCeu.forEach(function(m){
+    var alt = m.userData.alturaPx * m.userData.proporcaoPx * mundoPorPx * (celular ? 1.1 : 1);
+    m.scale.set(alt * m.userData.aspecto, alt, 1);
+  });
+
+  // a altura do trilho só muda quando gira o aparelho, e não quando o Safari
+  // esconde a barra de endereço, para o progresso da viagem não dar pulo
+  var hj = window.innerHeight;
+  if (!alturaTrilho || w !== larguraAtual || hj > alturaTrilho * 1.25 || hj < alturaTrilho * 0.75) {
+    alturaTrilho = hj;
+    document.getElementById('trilho').style.height = (hj * 30) + 'px';
+  }
+  larguraAtual = w;
+  alturaAtual = h;
+}
+
+function conferirTamanho(){
+  var tam = tamanhoDaCena();
+  if (tam.w !== larguraAtual || tam.h !== alturaAtual) aoRedimensionar();
+}
+
+/* ============================================================
+   interface guiada pelo scroll
+   ============================================================ */
+
+var elDica = document.getElementById('dica');
+var elBilhete = document.getElementById('bilhete');
+var elFinal = document.getElementById('final');
+var elProg = document.getElementById('progresso');
+var elProgCheio = document.querySelector('#progresso .cheio');
+
+function atualizarInterface(t){
+  elDica.classList.toggle('vis', t < A(0.018));
+  elBilhete.classList.toggle('vis', t > 0.898 && t < 0.935);
+  elFinal.classList.toggle('vis', t > 0.978);
+  elProg.classList.toggle('vis', t > 0.015 && t < 0.97);
+  elProgCheio.style.transform = 'scaleY(' + t.toFixed(4) + ')';
+}
+
+function progressoDoScroll(){
+  var max = document.documentElement.scrollHeight - window.innerHeight;
+  return max > 0 ? clamp(window.scrollY / max, 0, 1) : 0;
+}
+
+/* ============================================================
+   olhar o céu livremente
+   ============================================================ */
+
+var toques = {};
+var distPinca = 0;
+
+function entrarModoLivre(){
+  camera.getWorldDirection(vFrente);
+  var aa = altAzDoVetor([vFrente.x, vFrente.y, vFrente.z]);
+  livre.yaw = livre.alvoYaw = aa.az;
+  livre.pitch = livre.alvoPitch = aa.alt;
+  livre.fov = livre.alvoFov = camera.fov;
+  modoLivre = true;
+  document.body.classList.add('modo-livre');
+  document.documentElement.style.overflow = 'hidden';
+  document.body.style.overflow = 'hidden';
+  document.getElementById('cena').style.touchAction = 'none';
+  document.getElementById('livreDica').classList.remove('sumiu');
+}
+
+function sairModoLivre(){
+  modoLivre = false;
+  document.body.classList.remove('modo-livre');
+  document.documentElement.style.overflow = '';
+  document.body.style.overflow = '';
+  document.getElementById('cena').style.touchAction = '';
+  toques = {};
+}
+
+function ondeFicaANossa(){
+  if (separacao(dirCoracao, nucleo) < 18) return 'a nossa constelação fica pertinho do centro da Via Láctea';
+  if (separacao(dirCoracao, cruz) < 25) return 'a nossa constelação fica pertinho do Cruzeiro do Sul';
+  return 'procure a nossa constelação no céu';
+}
+
+function prepararModoLivre(){
+  var cena = document.getElementById('cena');
+  document.getElementById('livreDicaNossa').textContent = ondeFicaANossa();
+  document.getElementById('livreTopo').textContent = DATA_EXTENSO + '  ·  ' + HORA_TEXTO + '  ·  ' + NOITE.lugar;
+
+  cena.addEventListener('pointerdown', function(e){
+    if (!modoLivre) return;
+    toques[e.pointerId] = { x: e.clientX, y: e.clientY };
+    try { cena.setPointerCapture(e.pointerId); } catch(err){}
+    var ids = Object.keys(toques);
+    if (ids.length === 2) distPinca = Math.hypot(toques[ids[0]].x - toques[ids[1]].x, toques[ids[0]].y - toques[ids[1]].y);
+  });
+  cena.addEventListener('pointermove', function(e){
+    if (!modoLivre || !toques[e.pointerId]) return;
+    var ids = Object.keys(toques);
+    var antes = toques[e.pointerId];
+    if (ids.length === 1) {
+      var grausPorPx = livre.fov / window.innerHeight;
+      livre.alvoYaw = (livre.alvoYaw - (e.clientX - antes.x) * grausPorPx + 360) % 360;
+      livre.alvoPitch = clamp(livre.alvoPitch + (e.clientY - antes.y) * grausPorPx, -4, 88);
+      if (Math.abs(e.clientX - antes.x) + Math.abs(e.clientY - antes.y) > 2) document.getElementById('livreDica').classList.add('sumiu');
+    }
+    toques[e.pointerId] = { x: e.clientX, y: e.clientY };
+    if (ids.length === 2) {
+      var d = Math.hypot(toques[ids[0]].x - toques[ids[1]].x, toques[ids[0]].y - toques[ids[1]].y);
+      if (distPinca > 0) livre.alvoFov = clamp(livre.alvoFov * distPinca / d, 22, 80);
+      distPinca = d;
+    }
+    if (Math.abs(livre.alvoYaw - livre.yaw) > 180) livre.yaw += livre.alvoYaw > livre.yaw ? 360 : -360;
+  });
+  function soltar(e){ delete toques[e.pointerId]; distPinca = 0; }
+  cena.addEventListener('pointerup', soltar);
+  cena.addEventListener('pointercancel', soltar);
+  cena.addEventListener('wheel', function(e){
+    if (!modoLivre) return;
+    e.preventDefault();
+    livre.alvoFov = clamp(livre.alvoFov * (1 + e.deltaY * 0.0012), 22, 80);
+  }, { passive: false });
+
+  // no iPhone, a pinça e o arrastar não podem virar zoom ou scroll da página
+  cena.addEventListener('touchmove', function(e){ if (modoLivre) e.preventDefault(); }, { passive: false });
+  ['gesturestart', 'gesturechange'].forEach(function(nome){
+    document.addEventListener(nome, function(e){ if (modoLivre) e.preventDefault(); }, { passive: false });
+  });
+
+  document.getElementById('olharCeu').addEventListener('click', entrarModoLivre);
+  document.getElementById('voltar').addEventListener('click', sairModoLivre);
+}
+
+/* ============================================================
+   laço de animação
+   ============================================================ */
+
+function animar(){
+  requestAnimationFrame(animar);
+  if (!pronto) return;
+  var dt = Math.min(relogio.getDelta(), 0.1);
+  quadro(dt, relogio.elapsedTime);
+}
+
+function quadro(dt, tempo){
+  conferirTamanho();
+  var passo = 1 - Math.pow(0.001, dt);
+
+  if (!modoLivre) {
+    alvoT = tFixo !== null ? tFixo : progressoDoScroll();
+    atualT += (alvoT - atualT) * passo;
+  }
+
+  atualizarCamera(atualT, tempo);
+  grupoCeu.position.copy(camera.position);   // o céu fica sempre no infinito
+  atualizarFades(atualT, dt);
+  atualizarCeu(atualT, tempo, dt);
+  atualizarCoracao(atualT, tempo);
+  if (!modoLivre) atualizarInterface(atualT);
+
+  renderer.render(scene, camera);
+}
+
+/* ============================================================
+   partida
+   ============================================================ */
+
+function carregarImagens(){
+  var lista = [];
+  Object.keys(window.FOTOS_DESTAQUE || {}).forEach(function(k){ lista.push(FOTOS_DESTAQUE[k]); });
+  Object.keys(window.FOTOS_MINI || {}).forEach(function(k){
+    if (typeof FOTOS_MINI[k] === 'string') FOTOS_MINI[k] = { uri: FOTOS_MINI[k] };
+    lista.push(FOTOS_MINI[k]);
+  });
+  var pendentes = lista.length;
+  return new Promise(function(resolve){
+    if (!pendentes) return resolve();
+    lista.forEach(function(p){
+      var img = new Image();
+      img.onload = function(){ p.img = img; if (--pendentes === 0) resolve(); };
+      img.onerror = function(){ if (--pendentes === 0) resolve(); };
+      img.src = p.uri;
+    });
+  });
+}
+
+function carregarFontes(){
+  if (!document.fonts || !document.fonts.load) return Promise.resolve();
+  return Promise.all([
+    document.fonts.load('italic 400 100px "Cormorant Garamond"'),
+    document.fonts.load('400 100px "Cormorant Garamond"'),
+    document.fonts.load('300 60px "Jost"')
+  ]).catch(function(){});
+}
+
+document.getElementById('verDeNovo').addEventListener('click', function(){
+  var inicio = window.scrollY;
+  var t0 = performance.now();
+  var dur = 2600;
+  (function subir(agora){
+    var k = clamp((agora - t0) / dur, 0, 1);
+    var e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2;
+    window.scrollTo(0, inicio * (1 - e));
+    if (k < 1) requestAnimationFrame(subir);
+  })(t0);
+});
+
+window.addEventListener('pointermove', function(e){
+  if (e.pointerType === 'touch') return;
+  mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+  mouseY = -(e.clientY / window.innerHeight - 0.5) * 2;
+}, { passive:true });
+
+if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+if (tInicial === null) window.scrollTo(0, 0);
+
+var dadosOk = typeof ASTRO !== 'undefined' && typeof ESTRELAS !== 'undefined' && typeof FOTOS_DESTAQUE !== 'undefined';
+
+Promise.all([carregarFontes(), carregarImagens(), comLimite(promessaTerra, 9000), comLimite(promessaPaises, 5000)]).then(function(){
+  if (!dadosOk || !temWebGL || pedeSimples) {
+    montarVersaoSimples();
+    return;
+  }
+  try {
+    calcularCeu();
+    iniciar3D();
+    prepararModoLivre();
+  } catch (err) {
+    console.error(err);
+    montarVersaoSimples();
+    return;
+  }
+  if (tInicial !== null) {
+    var max = document.documentElement.scrollHeight - window.innerHeight;
+    if (!MODO_TESTE) window.scrollTo(0, tInicial * max);
+    atualT = alvoT = tInicial;
+  }
+  // para testar: __ceu.ir(0.5) pula para um ponto da viagem e desenha na hora
+  window.__ceu = {
+    camera: camera, get t(){ return atualT; },
+    ir: function(t, quadros){
+      var max = document.documentElement.scrollHeight - window.innerHeight;
+      if (!MODO_TESTE) window.scrollTo(0, t * max);
+      else tFixo = t;
+      atualT = alvoT = t;
+      for (var i = 0; i < (quadros || 90); i++) quadro(1 / 60, relogio.elapsedTime + i / 60);
+    }
+  };
+  if (MODO_TESTE) {
+    var ml = /[?&]livre=([\d.-]+),([\d.-]+),([\d.]+)/.exec(window.location.search);
+    if (ml) {
+      entrarModoLivre();
+      livre.yaw = livre.alvoYaw = parseFloat(ml[1]);
+      livre.pitch = livre.alvoPitch = parseFloat(ml[2]);
+      livre.fov = livre.alvoFov = parseFloat(ml[3]);
+    }
+    window.__ceu.ir(tInicial || 0, 120);
+  } else {
+    animar();
+  }
+  setTimeout(function(){
+    document.getElementById('carregando').classList.add('saiu');
+  }, 350);
+});
+
+})();
+</script>
+</body>
+</html>
